@@ -1,0 +1,28 @@
+---
+name: Reef PLC Normalizer
+version: "0.1.0"
+slug: reef_plc_normalizer
+description: Normalize AutomationDirect P1-550 packed MQTT payloads for Home Assistant
+url: https://github.com/ianhattendorf/reef-plc-normalizer/tree/main/reef_plc_normalizer
+arch:
+  - amd64
+startup: application
+boot: auto
+init: false
+image: ghcr.io/ianhattendorf/reef-plc-normalizer
+options:
+  mqtt_host: mqtt.ianhattendorf.com
+  mqtt_port: 1883
+  mqtt_username: ""
+  mqtt_password: ""
+  discovery_prefix: homeassistant
+  publish_diagnostic_ai: false
+  log_level: info
+schema:
+  mqtt_host: str
+  mqtt_port: "int(1,65535)"
+  mqtt_username: str?
+  mqtt_password: password?
+  discovery_prefix: str
+  publish_diagnostic_ai: bool
+  log_level: list(trace|debug|info|warn|error)
