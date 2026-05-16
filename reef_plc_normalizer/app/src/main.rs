@@ -644,6 +644,8 @@ mod tests {
             .unwrap();
         assert_eq!(inputs.fields[13].source, "ATO_Amps");
         assert_eq!(inputs.fields[13].length, 4);
+        assert_eq!(inputs.fields[15].source, "Ph_Transmitter");
+        assert_eq!(inputs.fields[15].length, 4);
     }
 
     #[test]
@@ -656,11 +658,12 @@ mod tests {
             .unwrap();
         let state = parse_payload(
             spec,
-            "78.3,78.1,78.3,0.57,0.40,0.00,0.41,0.35,0.12,0.10,0,1,1,0.05,1,",
+            "78.3,78.1,78.3,0.57,0.40,0.00,0.41,0.35,0.12,0.10,0,1,1,0.05,1,8.12,",
         )
         .unwrap();
 
         assert_eq!(state["Temp_Sump_1"], json!(78.3));
+        assert_eq!(state["Ph_Transmitter"], json!(8.12));
         assert_eq!(state["Heater_2_Amps"], json!(0.0));
         assert_eq!(state["Wavemakers_Amps"], json!(0.10));
         assert_eq!(state["ATO_Amps"], json!(0.05));
@@ -713,7 +716,7 @@ mod tests {
         assert!(matches!(
             err,
             ParsePayloadError::CountMismatch {
-                expected: 15,
+                expected: 16,
                 actual: 3,
                 ..
             }

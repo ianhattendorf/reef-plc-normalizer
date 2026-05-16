@@ -523,6 +523,15 @@ topics:
           domain: binary_sensor
           name: ATO Running
           device_class: running
+      - source: Ph_Transmitter
+        length: 4
+        value_type: float
+        discovery:
+          domain: sensor
+          name: pH Transmitter
+          unit_of_measurement: pH
+          state_class: measurement
+          suggested_display_precision: 2
 
   - kind: ato
     source_topic: plc/aquarium/ato
