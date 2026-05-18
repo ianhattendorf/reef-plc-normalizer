@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.3
 
 - Add heater on-time and pH alarm entities to the packed alarm topic.
 
