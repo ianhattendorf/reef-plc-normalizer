@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add heater on-time and pH alarm entities to the packed alarm topic.
+
 ## 0.1.2
 
 - Add packed alarm topic normalization and Home Assistant discovery entities.

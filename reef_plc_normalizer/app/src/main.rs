@@ -657,9 +657,11 @@ mod tests {
             .iter()
             .find(|spec| spec.kind == TopicKind::Alarms)
             .unwrap();
-        assert_eq!(alarms.fields.len(), 12);
+        assert_eq!(alarms.fields.len(), 14);
         assert_eq!(alarms.fields[0].source, "Alarm_Heater_Not_On");
         assert_eq!(alarms.fields[11].source, "Alarm_ATO_Runtime");
+        assert_eq!(alarms.fields[12].source, "Alarm_Heater_1_On_Time");
+        assert_eq!(alarms.fields[13].source, "Alarm_Ph");
     }
 
     #[test]
@@ -670,12 +672,14 @@ mod tests {
             .iter()
             .find(|spec| spec.kind == TopicKind::Alarms)
             .unwrap();
-        let state = parse_payload(spec, "1,0,0,1,0,1,0,0,1,0,1,0,").unwrap();
+        let state = parse_payload(spec, "1,0,0,1,0,1,0,0,1,0,1,0,1,0,").unwrap();
 
         assert_eq!(state["Alarm_Heater_Not_On"], json!(true));
         assert_eq!(state["Alarm_Heater_On"], json!(false));
         assert_eq!(state["Alarm_Return_Pump_Not_Running"], json!(true));
         assert_eq!(state["Alarm_ATO_Runtime"], json!(false));
+        assert_eq!(state["Alarm_Heater_1_On_Time"], json!(true));
+        assert_eq!(state["Alarm_Ph"], json!(false));
     }
 
     #[test]

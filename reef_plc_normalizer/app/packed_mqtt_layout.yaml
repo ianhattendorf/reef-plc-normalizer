@@ -621,6 +621,20 @@ topics:
           domain: binary_sensor
           name: ATO Runtime Alarm
           device_class: problem
+      - source: Alarm_Heater_1_On_Time
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Heater 1 On Time Alarm
+          device_class: problem
+      - source: Alarm_Ph
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: pH Alarm
+          device_class: problem
 
   - kind: ato
     source_topic: plc/aquarium/ato
