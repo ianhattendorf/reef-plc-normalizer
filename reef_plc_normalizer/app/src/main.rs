@@ -379,7 +379,10 @@ async fn poll_loop(
 }
 
 fn parse_payload(spec: &TopicSpec, payload: &str) -> Result<Map<String, Value>, ParsePayloadError> {
-    let values = split_payload(spec, payload);
+    let mut values = split_csv(payload);
+    if values.last().is_some_and(|value| value.is_empty()) {
+        values.pop();
+    }
 
     if values.len() != spec.fields.len() {
         return Err(ParsePayloadError::CountMismatch {
@@ -398,39 +401,8 @@ fn parse_payload(spec: &TopicSpec, payload: &str) -> Result<Map<String, Value>, 
     Ok(state)
 }
 
-fn split_payload<'a>(spec: &TopicSpec, payload: &'a str) -> Vec<&'a str> {
-    let payload = payload.trim();
-    if payload.contains(',') {
-        let mut values = split_csv(payload);
-        if values.last().is_some_and(|value| value.is_empty()) {
-            values.pop();
-        }
-        return values;
-    }
-
-    let expected_len: usize = spec.fields.iter().map(|field| field.length).sum();
-    if payload.len() != expected_len {
-        return vec![payload];
-    }
-
-    split_fixed_width(spec, payload)
-}
-
 fn split_csv(payload: &str) -> Vec<&str> {
     payload.split(',').map(str::trim).collect()
-}
-
-fn split_fixed_width<'a>(spec: &TopicSpec, payload: &'a str) -> Vec<&'a str> {
-    let mut values = Vec::with_capacity(spec.fields.len());
-    let mut start = 0;
-
-    for field in &spec.fields {
-        let end = start + field.length;
-        values.push(payload[start..end].trim());
-        start = end;
-    }
-
-    values
 }
 
 fn parse_value(topic: &str, field: &Field, value: &str) -> Result<Value, ParsePayloadError> {
@@ -699,22 +671,6 @@ mod tests {
             .find(|spec| spec.kind == TopicKind::Alarms)
             .unwrap();
         let state = parse_payload(spec, "1,0,0,1,0,1,0,0,1,0,1,0,").unwrap();
-
-        assert_eq!(state["Alarm_Heater_Not_On"], json!(true));
-        assert_eq!(state["Alarm_Heater_On"], json!(false));
-        assert_eq!(state["Alarm_Return_Pump_Not_Running"], json!(true));
-        assert_eq!(state["Alarm_ATO_Runtime"], json!(false));
-    }
-
-    #[test]
-    fn parses_fixed_width_alarm_payloads() {
-        let layout = test_layout();
-        let spec = layout
-            .topics
-            .iter()
-            .find(|spec| spec.kind == TopicKind::Alarms)
-            .unwrap();
-        let state = parse_payload(spec, "100101001010").unwrap();
 
         assert_eq!(state["Alarm_Heater_Not_On"], json!(true));
         assert_eq!(state["Alarm_Heater_On"], json!(false));

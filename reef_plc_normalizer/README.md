@@ -3,7 +3,7 @@
 Home Assistant App that normalizes AutomationDirect P1-550 packed MQTT payloads
 for reef tank monitoring.
 
-The app subscribes to the raw PLC topics, validates the packed field counts,
+The app subscribes to the raw PLC topics, validates the packed CSV field counts,
 publishes normalized JSON state topics, and publishes retained Home Assistant
 MQTT device discovery.
 
