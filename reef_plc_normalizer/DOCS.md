@@ -16,9 +16,11 @@ reef PLC into Home Assistant MQTT entities.
 
 ## Validation
 
-Each PLC topic has a fixed field count. The app trims whitespace, accepts one
-trailing comma, and rejects payloads with the wrong number of fields or invalid
-values. Rejected payloads are logged and do not update Home Assistant state.
+Each PLC topic has a fixed field count. The app accepts comma-separated payloads
+with one trailing comma, and fixed-width payloads that match the configured field
+lengths. Whitespace is trimmed from individual values. Payloads with the wrong
+number of fields or invalid values are rejected, logged, and do not update Home
+Assistant state.
 
 ## Packed MQTT Layout
 

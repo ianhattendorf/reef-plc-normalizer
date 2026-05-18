@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Accept fixed-width packed MQTT payloads without comma separators.
+
 ## 0.1.2
 
 - Add packed alarm topic normalization and Home Assistant discovery entities.
