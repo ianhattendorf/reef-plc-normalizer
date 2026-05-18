@@ -59,6 +59,7 @@ enum TopicKind {
     Do,
     Ai,
     Inputs,
+    Alarms,
     Ato,
 }
 
@@ -623,11 +624,15 @@ mod tests {
     fn embedded_layout_loads_and_validates() {
         let layout = test_layout();
 
-        assert_eq!(layout.topics.len(), 5);
+        assert_eq!(layout.topics.len(), 6);
         assert!(layout
             .topics
             .iter()
             .any(|spec| spec.source_topic == "plc/aquarium/inputs"));
+        assert!(layout
+            .topics
+            .iter()
+            .any(|spec| spec.source_topic == "plc/aquarium/alarms"));
 
         let di = layout
             .topics
@@ -646,6 +651,31 @@ mod tests {
         assert_eq!(inputs.fields[13].length, 4);
         assert_eq!(inputs.fields[15].source, "Ph_Transmitter");
         assert_eq!(inputs.fields[15].length, 4);
+
+        let alarms = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::Alarms)
+            .unwrap();
+        assert_eq!(alarms.fields.len(), 12);
+        assert_eq!(alarms.fields[0].source, "Alarm_Heater_Not_On");
+        assert_eq!(alarms.fields[11].source, "Alarm_ATO_Runtime");
+    }
+
+    #[test]
+    fn parses_alarm_payloads() {
+        let layout = test_layout();
+        let spec = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::Alarms)
+            .unwrap();
+        let state = parse_payload(spec, "1,0,0,1,0,1,0,0,1,0,1,0,").unwrap();
+
+        assert_eq!(state["Alarm_Heater_Not_On"], json!(true));
+        assert_eq!(state["Alarm_Heater_On"], json!(false));
+        assert_eq!(state["Alarm_Return_Pump_Not_Running"], json!(true));
+        assert_eq!(state["Alarm_ATO_Runtime"], json!(false));
     }
 
     #[test]

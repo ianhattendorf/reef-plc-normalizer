@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add packed alarm topic normalization and Home Assistant discovery entities.
+
 ## 0.1.1
 
 - Add release metadata updates for Home Assistant update detection.

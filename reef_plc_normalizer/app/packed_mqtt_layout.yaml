@@ -533,6 +533,95 @@ topics:
           state_class: measurement
           suggested_display_precision: 2
 
+  - kind: alarms
+    source_topic: plc/aquarium/alarms
+    state_topic: reef/plc/state/alarms
+    fields:
+      - source: Alarm_Heater_Not_On
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Heater Not On Alarm
+          device_class: problem
+      - source: Alarm_Heater_On
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Heater On Alarm
+          device_class: problem
+      - source: Alarm_Leak
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Leak Alarm
+          device_class: problem
+      - source: Alarm_Return_Pump_Not_Running
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Return Pump Not Running Alarm
+          device_class: problem
+      - source: Alarm_Return_Pump_Running
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Return Pump Running Alarm
+          device_class: problem
+      - source: Alarm_Skimmer_Not_Running
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Skimmer Not Running Alarm
+          device_class: problem
+      - source: Alarm_Skimmer_Running
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Skimmer Running Alarm
+          device_class: problem
+      - source: Alarm_Temp_High
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Temp High Alarm
+          device_class: problem
+      - source: Alarm_Temp_Low
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Temp Low Alarm
+          device_class: problem
+      - source: Alarm_Return_Water_High
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Return Water High Alarm
+          device_class: problem
+      - source: Alarm_Return_Float_Mismatch
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Return Float Mismatch Alarm
+          device_class: problem
+      - source: Alarm_ATO_Runtime
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: ATO Runtime Alarm
+          device_class: problem
+
   - kind: ato
     source_topic: plc/aquarium/ato
     state_topic: reef/plc/state/ato
