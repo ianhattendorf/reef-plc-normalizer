@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.2
 
 - Add packed alarm topic normalization and Home Assistant discovery entities.
 
