@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.4
 
 - Add current and accumulated ATO milliliter sensors to the packed ATO topic.
 
