@@ -698,3 +698,19 @@ topics:
           domain: binary_sensor
           name: ATO Timer Acc Less
           entity_category: diagnostic
+      - source: ATO_Current_mL
+        length: 4
+        value_type: int
+        discovery:
+          domain: sensor
+          name: ATO Current
+          unit_of_measurement: mL
+          state_class: measurement
+      - source: ATO_Acc_mL
+        length: 4
+        value_type: int
+        discovery:
+          domain: sensor
+          name: ATO Accumulated
+          unit_of_measurement: mL
+          state_class: measurement

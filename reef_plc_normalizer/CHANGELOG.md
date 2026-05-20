@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add current and accumulated ATO milliliter sensors to the packed ATO topic.
+
 ## 0.1.3
 
 - Add heater on-time and pH alarm entities to the packed alarm topic.

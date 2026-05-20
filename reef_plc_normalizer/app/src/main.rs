@@ -662,6 +662,17 @@ mod tests {
         assert_eq!(alarms.fields[11].source, "Alarm_ATO_Runtime");
         assert_eq!(alarms.fields[12].source, "Alarm_Heater_1_On_Time");
         assert_eq!(alarms.fields[13].source, "Alarm_Ph");
+
+        let ato = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::Ato)
+            .unwrap();
+        assert_eq!(ato.fields.len(), 9);
+        assert_eq!(ato.fields[7].source, "ATO_Current_mL");
+        assert_eq!(ato.fields[7].length, 4);
+        assert_eq!(ato.fields[8].source, "ATO_Acc_mL");
+        assert_eq!(ato.fields[8].length, 4);
     }
 
     #[test]
@@ -680,6 +691,22 @@ mod tests {
         assert_eq!(state["Alarm_ATO_Runtime"], json!(false));
         assert_eq!(state["Alarm_Heater_1_On_Time"], json!(true));
         assert_eq!(state["Alarm_Ph"], json!(false));
+    }
+
+    #[test]
+    fn parses_ato_volume_payloads() {
+        let layout = test_layout();
+        let spec = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::Ato)
+            .unwrap();
+        let state = parse_payload(spec, "12,1,345,678,0,1,0,42,1234,").unwrap();
+
+        assert_eq!(state["ATO_Timer.Current"], json!(12));
+        assert_eq!(state["ATO_Timer.Done"], json!(true));
+        assert_eq!(state["ATO_Current_mL"], json!(42));
+        assert_eq!(state["ATO_Acc_mL"], json!(1234));
     }
 
     #[test]
