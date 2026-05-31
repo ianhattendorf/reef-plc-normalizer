@@ -15,6 +15,10 @@ MQTT device discovery.
 - Availability: `reef/plc/status`
 - Discovery: `homeassistant/{sensor,binary_sensor}/reef_plc_<entity>/config`
 
+The app also publishes diagnostic topic-health binary sensors for each normalized
+state topic. They use Home Assistant MQTT `expire_after` to become unavailable
+when a PLC topic stops updating for 60 seconds.
+
 Home Assistant remains observe-only. Relay outputs are exposed as binary sensors,
 not switches.
 

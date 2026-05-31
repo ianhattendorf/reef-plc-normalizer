@@ -21,6 +21,7 @@ const AVAILABILITY_TOPIC: &str = "reef/plc/status";
 const HA_STATUS_TOPIC: &str = "homeassistant/status";
 const PACKED_MQTT_LAYOUT: &str = include_str!("../packed_mqtt_layout.yaml");
 const MQTT_REQUEST_CHANNEL_CAPACITY: usize = 256;
+const TOPIC_HEALTH_EXPIRE_AFTER_SECONDS: u64 = 60;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -477,6 +478,8 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
     let mut messages = Vec::new();
 
     for spec in &layout.topics {
+        messages.push(topic_health_discovery_message(options, spec));
+
         if spec.kind == TopicKind::Ai && !options.publish_diagnostic_ai {
             continue;
         }
@@ -581,6 +584,31 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
     messages
 }
 
+fn topic_health_discovery_message(options: &AppOptions, spec: &TopicSpec) -> (String, Value) {
+    let component_id = format!("{}_topic_online", spec.kind.as_str());
+    let payload = json!({
+        "unique_id": format!("{DEVICE_ID}_{component_id}"),
+        "name": format!("{} Topic Online", spec.kind.display_name()),
+        "state_topic": spec.state_topic.as_str(),
+        "value_template": "ON",
+        "payload_on": "ON",
+        "expire_after": TOPIC_HEALTH_EXPIRE_AFTER_SECONDS,
+        "availability_topic": AVAILABILITY_TOPIC,
+        "payload_available": "online",
+        "payload_not_available": "offline",
+        "device_class": "connectivity",
+        "entity_category": "diagnostic",
+        "device": device_payload(),
+        "origin": origin_payload(),
+    });
+    let discovery_topic = format!(
+        "{}/binary_sensor/{DEVICE_ID}_{component_id}/config",
+        options.discovery_prefix
+    );
+
+    (discovery_topic, payload)
+}
+
 fn device_payload() -> Value {
     json!({
         "identifiers": [DEVICE_ID],
@@ -613,6 +641,30 @@ fn component_id(source: &str) -> String {
 
 fn jinja_key(source: &str) -> String {
     serde_json::to_string(source).expect("source string should serialize")
+}
+
+impl TopicKind {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Di => "di",
+            Self::Do => "do",
+            Self::Ai => "ai",
+            Self::Inputs => "inputs",
+            Self::Alarms => "alarms",
+            Self::Ato => "ato",
+        }
+    }
+
+    fn display_name(self) -> &'static str {
+        match self {
+            Self::Di => "DI",
+            Self::Do => "DO",
+            Self::Ai => "AI",
+            Self::Inputs => "Inputs",
+            Self::Alarms => "Alarms",
+            Self::Ato => "ATO",
+        }
+    }
 }
 
 #[cfg(test)]
@@ -812,7 +864,49 @@ mod tests {
         assert!(components.contains_key("total_amps"));
         assert!(components.contains_key("di_water_leak_1"));
         assert!(components.contains_key("ato_timer_current"));
+        assert!(components.contains_key("ai_topic_online"));
         assert!(!components.contains_key("ai_ct_ac_total"));
+    }
+
+    #[test]
+    fn discovery_includes_topic_health_sensors() {
+        let layout = test_layout();
+        let options = test_options(false);
+        let messages = discovery_messages(&options, &layout);
+        let components = discovery_components(&options, &layout);
+
+        for (component_id, state_topic) in [
+            ("di_topic_online", "reef/plc/state/di"),
+            ("do_topic_online", "reef/plc/state/do"),
+            ("ai_topic_online", "reef/plc/state/ai"),
+            ("inputs_topic_online", "reef/plc/state/inputs"),
+            ("alarms_topic_online", "reef/plc/state/alarms"),
+            ("ato_topic_online", "reef/plc/state/ato"),
+        ] {
+            assert!(messages.iter().any(|(topic, _)| topic
+                == &format!("homeassistant/binary_sensor/reef_plc_{component_id}/config")));
+            assert_eq!(
+                components[component_id]["unique_id"],
+                json!(format!("reef_plc_{component_id}"))
+            );
+            assert_eq!(components[component_id]["state_topic"], json!(state_topic));
+            assert_eq!(components[component_id]["value_template"], json!("ON"));
+            assert_eq!(components[component_id]["payload_on"], json!("ON"));
+            assert_eq!(components[component_id]["expire_after"], json!(60));
+            assert_eq!(
+                components[component_id]["availability_topic"],
+                json!("reef/plc/status")
+            );
+            assert_eq!(
+                components[component_id]["device_class"],
+                json!("connectivity")
+            );
+            assert_eq!(
+                components[component_id]["entity_category"],
+                json!("diagnostic")
+            );
+            assert!(components[component_id].get("force_update").is_none());
+        }
     }
 
     #[test]

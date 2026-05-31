@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5
+
+- Add diagnostic MQTT topic-health entities with 60-second freshness expiry.
+
 ## 0.1.4
 
 - Add current and accumulated ATO milliliter sensors to the packed ATO topic.

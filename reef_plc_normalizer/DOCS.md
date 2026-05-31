@@ -20,6 +20,20 @@ Each PLC topic has a fixed field count. The app trims whitespace, accepts one
 trailing comma, and rejects payloads with the wrong number of fields or invalid
 values. Rejected payloads are logged and do not update Home Assistant state.
 
+## Topic Health
+
+The app publishes diagnostic MQTT binary sensor discovery for each normalized
+state topic: DI, DO, AI, inputs, alarms, and ATO. These entities use the
+normalized state topic as their `state_topic`, always render the latest payload
+as `ON`, and set `expire_after: 60`. If one PLC topic stops producing fresh
+payloads while the app stays online, only that topic-health entity becomes
+unavailable.
+
+The topic-health entities also use `reef/plc/status` as their availability
+topic. The availability topic tracks the normalizer app MQTT client through a
+retained online payload and retained LWT offline payload; `expire_after` tracks
+per-topic freshness.
+
 ## Packed MQTT Layout
 
 The packed MQTT topic layout and per-field Home Assistant discovery metadata are

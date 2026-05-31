@@ -1,6 +1,6 @@
 ---
 name: Reef PLC Normalizer
-version: "0.1.4"
+version: "0.1.5"
 slug: reef_plc_normalizer
 description: Normalize AutomationDirect P1-550 packed MQTT payloads for Home Assistant
 url: https://github.com/ianhattendorf/reef-plc-normalizer/tree/main/reef_plc_normalizer
