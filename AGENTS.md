@@ -23,8 +23,8 @@ Run commands from the repository root unless noted:
 - `cargo test --manifest-path reef_plc_normalizer/app/Cargo.toml --locked`:
   run tests using the committed lockfile.
 - `scripts/check-release.sh`: verify release metadata is synchronized.
-- `scripts/prepare-release.sh patch`: prepare a release; also accepts `minor`,
-  `major`, or an explicit version like `0.2.0`.
+- `scripts/release.sh patch --note "Describe the change"`: run the full release
+  flow; also accepts `minor`, `major`, or an explicit version like `0.2.0`.
 
 ## Coding Style & Naming Conventions
 
@@ -56,5 +56,6 @@ concise note describing user-visible or operational changes made.
 ## Release Notes
 
 Home Assistant update detection depends on `reef_plc_normalizer/config.yaml`
-`version`. Release images are published by CI from tags like `v0.1.1`; do not
-publish release images from an untagged local build.
+`version`. Use `scripts/release.sh` to update release metadata, commit, tag, and
+push. Release images are published by CI from tags like `v0.1.1`; do not publish
+release images from an untagged local build.
