@@ -9,12 +9,11 @@ changelog="$app_dir/CHANGELOG.md"
 remote="origin"
 branch="main"
 push=1
-note=""
 version_or_bump=""
 
 usage() {
   cat >&2 <<'EOF'
-usage: scripts/release.sh VERSION_OR_BUMP --note "Release note" [OPTIONS]
+usage: scripts/release.sh VERSION_OR_BUMP [OPTIONS]
 
 VERSION_OR_BUMP may be:
   X.Y.Z   explicit stable SemVer version
@@ -23,7 +22,6 @@ VERSION_OR_BUMP may be:
   major   increment current X.Y.Z to (X+1).0.0
 
 Options:
-  --note TEXT       Required changelog bullet for the release.
   --no-push         Commit and tag locally, but do not push.
   --remote NAME     Git remote to push to. Defaults to origin.
   --branch NAME     Release branch. Defaults to main.
@@ -38,11 +36,6 @@ fail() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --note)
-      [[ $# -ge 2 ]] || fail "--note requires a value"
-      note="$2"
-      shift 2
-      ;;
     --no-push)
       push=0
       shift
@@ -76,17 +69,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$version_or_bump" || -z "$note" ]]; then
+if [[ -z "$version_or_bump" ]]; then
   usage
-  fail "VERSION_OR_BUMP and --note are required"
-fi
-
-if [[ "$note" =~ ^[[:space:]]*$ ]]; then
-  fail "--note must not be empty"
-fi
-
-if [[ "$note" == *$'\n'* ]]; then
-  fail "--note must be a single line"
+  fail "VERSION_OR_BUMP is required"
 fi
 
 if [[ -n "$(git -C "$repo_root" status --porcelain)" ]]; then
@@ -154,6 +139,25 @@ if git -C "$repo_root" ls-remote --exit-code --tags "$remote" "$tag_name" >/dev/
   fail "remote tag already exists on $remote: $tag_name"
 fi
 
+if ! awk '
+  $0 == "## Unreleased" {
+    found = 1
+    in_unreleased = 1
+    next
+  }
+  in_unreleased && /^## / {
+    in_unreleased = 0
+  }
+  in_unreleased && $0 !~ /^[[:space:]]*$/ {
+    has_content = 1
+  }
+  END {
+    exit(found && has_content ? 0 : 1)
+  }
+' "$changelog"; then
+  fail "$changelog must contain a non-empty ## Unreleased section before releasing"
+fi
+
 sed -i -E "s/^version:[[:space:]]*\"?[0-9]+\.[0-9]+\.[0-9]+\"?[[:space:]]*$/version: \"$target_version\"/" "$config_yaml"
 
 cargo_tmp="$(mktemp)"
@@ -168,17 +172,34 @@ awk -v version="$target_version" '
 mv "$cargo_tmp" "$cargo_toml"
 
 changelog_tmp="$(mktemp)"
-awk -v version="$target_version" -v note="$note" '
-  NR == 1 {
-    print
+awk -v version="$target_version" '
+  $0 == "## Unreleased" {
+    print "## Unreleased"
     print ""
     print "## " version
     print ""
-    print "- " note
-    inserted = 1
+    in_unreleased = 1
+    seen_content = 0
+    last_blank = 0
     next
   }
-  inserted && NR == 2 && $0 == "" { next }
+  in_unreleased && /^## / {
+    if (!last_blank) {
+      print ""
+    }
+    print
+    in_unreleased = 0
+    next
+  }
+  in_unreleased {
+    if (!seen_content && $0 ~ /^[[:space:]]*$/) {
+      next
+    }
+    print
+    seen_content = 1
+    last_blank = ($0 ~ /^[[:space:]]*$/)
+    next
+  }
   { print }
 ' "$changelog" > "$changelog_tmp"
 mv "$changelog_tmp" "$changelog"

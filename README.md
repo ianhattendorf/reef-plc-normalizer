@@ -11,10 +11,12 @@ for local app installation.
 Run releases from a clean `main` branch:
 
 ```sh
-scripts/release.sh patch --note "Describe the user-visible change"
+scripts/release.sh patch
 ```
 
-The release script updates version metadata, writes the changelog entry, runs
-the release checks and tests, commits, creates the matching `vX.Y.Z` tag, and
-pushes both `main` and the tag. The pushed tag triggers the GitHub Actions image
-publish workflow.
+Add user-visible changes to `reef_plc_normalizer/CHANGELOG.md` under
+`## Unreleased` before releasing. The release script updates version metadata,
+promotes the unreleased changelog notes into the new version, runs the release
+checks and tests, commits, creates the matching `vX.Y.Z` tag, and pushes both
+`main` and the tag. The pushed tag triggers the GitHub Actions image publish
+workflow.

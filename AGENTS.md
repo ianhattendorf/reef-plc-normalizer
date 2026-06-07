@@ -23,8 +23,9 @@ Run commands from the repository root unless noted:
 - `cargo test --manifest-path reef_plc_normalizer/app/Cargo.toml --locked`:
   run tests using the committed lockfile.
 - `scripts/check-release.sh`: verify release metadata is synchronized.
-- `scripts/release.sh patch --note "Describe the change"`: run the full release
-  flow; also accepts `minor`, `major`, or an explicit version like `0.2.0`.
+- `scripts/release.sh patch`: run the full release flow using changelog notes
+  from `## Unreleased`; also accepts `minor`, `major`, or an explicit version
+  like `0.2.0`.
 
 ## Coding Style & Naming Conventions
 

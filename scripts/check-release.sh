@@ -42,6 +42,10 @@ if [[ "$lock_version" != "$config_version" ]]; then
   fail "$cargo_lock version $lock_version does not match $config_yaml version $config_version"
 fi
 
+if ! grep -Fqx "## Unreleased" "$changelog"; then
+  fail "$changelog is missing heading: ## Unreleased"
+fi
+
 if ! grep -Fqx "## $config_version" "$changelog"; then
   fail "$changelog is missing heading: ## $config_version"
 fi
