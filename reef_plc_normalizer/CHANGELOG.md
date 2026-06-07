@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add the return float low-time alarm to the packed alarm topic.
+
 ## 0.1.5
 
 - Add diagnostic MQTT topic-health entities with 60-second freshness expiry.

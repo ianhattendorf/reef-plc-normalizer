@@ -635,6 +635,13 @@ topics:
           domain: binary_sensor
           name: pH Alarm
           device_class: problem
+      - source: Alarm_Return_Float_Low_Time
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Return Float Low Time Alarm
+          device_class: problem
 
   - kind: ato
     source_topic: plc/aquarium/ato
