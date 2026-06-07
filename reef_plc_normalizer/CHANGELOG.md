@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.6
+
 - Add the return float low-time alarm to the packed alarm topic.
 
 ## 0.1.5
