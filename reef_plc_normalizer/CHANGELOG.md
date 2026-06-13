@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.7
+
 - Harden MQTT recovery after broker restarts and transient connection loss.
 
 ## 0.1.6
