@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -22,6 +22,8 @@ const HA_STATUS_TOPIC: &str = "homeassistant/status";
 const PACKED_MQTT_LAYOUT: &str = include_str!("../packed_mqtt_layout.yaml");
 const MQTT_REQUEST_CHANNEL_CAPACITY: usize = 256;
 const TOPIC_HEALTH_EXPIRE_AFTER_SECONDS: u64 = 60;
+const MQTT_RECONNECT_INITIAL_DELAY: Duration = Duration::from_secs(1);
+const MQTT_RECONNECT_MAX_DELAY: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -125,6 +127,39 @@ struct TopicSpec {
     source_topic: String,
     state_topic: String,
     fields: Vec<Field>,
+}
+
+#[derive(Debug, Clone)]
+struct CachedState {
+    payload: String,
+    updated_at: Instant,
+}
+
+#[derive(Debug)]
+struct ReconnectBackoff {
+    initial: Duration,
+    current: Duration,
+    max: Duration,
+}
+
+impl ReconnectBackoff {
+    fn new(initial: Duration, max: Duration) -> Self {
+        Self {
+            initial,
+            current: initial,
+            max,
+        }
+    }
+
+    fn next_delay(&mut self) -> Duration {
+        let delay = self.current;
+        self.current = self.current.saturating_mul(2).min(self.max);
+        delay
+    }
+
+    fn reset(&mut self) {
+        self.current = self.initial;
+    }
 }
 
 #[derive(Debug, Error)]
@@ -284,13 +319,24 @@ async fn run(options: AppOptions, layout: Layout) -> Result<()> {
 
     let (client, mut event_loop) = AsyncClient::new(mqtt_options, MQTT_REQUEST_CHANNEL_CAPACITY);
 
+    poll_loop(client, &mut event_loop, options, layout).await
+}
+
+async fn refresh_connection(
+    client: &AsyncClient,
+    options: &AppOptions,
+    layout: &Layout,
+    last_states: &HashMap<String, CachedState>,
+    now: Instant,
+) -> Result<()> {
     client
         .publish(AVAILABILITY_TOPIC, QoS::AtLeastOnce, true, "online")
         .await
         .context("failed to publish availability")?;
-    publish_discovery(&client, &options, &layout).await?;
-    subscribe(&client, &layout).await?;
-    poll_loop(client, &mut event_loop, options, layout).await
+    subscribe(client, layout).await?;
+    publish_discovery(client, options, layout).await?;
+    republish_fresh_states(client, layout, last_states, now).await?;
+    Ok(())
 }
 
 async fn subscribe(client: &AsyncClient, layout: &Layout) -> Result<()> {
@@ -309,16 +355,65 @@ async fn subscribe(client: &AsyncClient, layout: &Layout) -> Result<()> {
     Ok(())
 }
 
+async fn republish_fresh_states(
+    client: &AsyncClient,
+    layout: &Layout,
+    last_states: &HashMap<String, CachedState>,
+    now: Instant,
+) -> Result<()> {
+    for (state_topic, state_payload) in fresh_cached_states(layout, last_states, now) {
+        client
+            .publish(
+                state_topic,
+                QoS::AtLeastOnce,
+                false,
+                state_payload.as_bytes(),
+            )
+            .await
+            .with_context(|| format!("failed to republish {state_topic}"))?;
+    }
+
+    Ok(())
+}
+
+fn fresh_cached_states<'a>(
+    layout: &'a Layout,
+    last_states: &'a HashMap<String, CachedState>,
+    now: Instant,
+) -> Vec<(&'a str, &'a str)> {
+    layout
+        .topics
+        .iter()
+        .filter_map(|spec| {
+            let cached = last_states.get(&spec.state_topic)?;
+            let age = now.saturating_duration_since(cached.updated_at);
+            (age <= Duration::from_secs(TOPIC_HEALTH_EXPIRE_AFTER_SECONDS))
+                .then_some((spec.state_topic.as_str(), cached.payload.as_str()))
+        })
+        .collect()
+}
+
 async fn poll_loop(
     client: AsyncClient,
     event_loop: &mut EventLoop,
     options: AppOptions,
     layout: Layout,
 ) -> Result<()> {
-    let mut last_states: HashMap<String, String> = HashMap::new();
+    let mut last_states: HashMap<String, CachedState> = HashMap::new();
+    let mut reconnect_backoff =
+        ReconnectBackoff::new(MQTT_RECONNECT_INITIAL_DELAY, MQTT_RECONNECT_MAX_DELAY);
 
     loop {
         match event_loop.poll().await {
+            Ok(Event::Incoming(Incoming::ConnAck(connack))) => {
+                reconnect_backoff.reset();
+                info!(
+                    session_present = connack.session_present,
+                    "MQTT connection established; refreshing subscriptions and discovery"
+                );
+                refresh_connection(&client, &options, &layout, &last_states, Instant::now())
+                    .await?;
+            }
             Ok(Event::Incoming(Incoming::Publish(packet))) => {
                 let topic = packet.topic.as_str();
                 let payload = String::from_utf8_lossy(&packet.payload);
@@ -327,17 +422,8 @@ async fn poll_loop(
                     if payload.trim() == "online" {
                         info!("Home Assistant MQTT birth received; republishing discovery");
                         publish_discovery(&client, &options, &layout).await?;
-                        for (state_topic, state_payload) in &last_states {
-                            client
-                                .publish(
-                                    state_topic.as_str(),
-                                    QoS::AtLeastOnce,
-                                    false,
-                                    state_payload.as_bytes(),
-                                )
-                                .await
-                                .with_context(|| format!("failed to republish {state_topic}"))?;
-                        }
+                        republish_fresh_states(&client, &layout, &last_states, Instant::now())
+                            .await?;
                     }
                     continue;
                 }
@@ -361,7 +447,13 @@ async fn poll_loop(
                             )
                             .await
                             .with_context(|| format!("failed to publish {}", spec.state_topic))?;
-                        last_states.insert(spec.state_topic.clone(), state_payload);
+                        last_states.insert(
+                            spec.state_topic.clone(),
+                            CachedState {
+                                payload: state_payload,
+                                updated_at: Instant::now(),
+                            },
+                        );
                     }
                     Err(err) => {
                         warn!(%err, payload = %payload, "rejecting PLC payload");
@@ -372,8 +464,9 @@ async fn poll_loop(
                 debug!(?event, "MQTT event");
             }
             Err(err) => {
-                error!(%err, "MQTT event loop error; retrying");
-                time::sleep(Duration::from_secs(5)).await;
+                let delay = reconnect_backoff.next_delay();
+                error!(%err, delay_seconds = delay.as_secs(), "MQTT event loop error; retrying");
+                time::sleep(delay).await;
             }
         }
     }
@@ -989,6 +1082,60 @@ mod tests {
             components["di_water_leak_1"]["value_template"],
             json!("{{ 'ON' if value_json[\"DI_Water_Leak_1\"] else 'OFF' }}")
         );
+    }
+
+    #[test]
+    fn fresh_cached_states_follow_layout_order_and_skip_stale_states() {
+        let layout = test_layout();
+        let now = Instant::now();
+        let mut last_states = HashMap::new();
+
+        last_states.insert(
+            "reef/plc/state/alarms".to_string(),
+            CachedState {
+                payload: "{\"Alarm_Ph\":true}".to_string(),
+                updated_at: now,
+            },
+        );
+        last_states.insert(
+            "reef/plc/state/di".to_string(),
+            CachedState {
+                payload: "{\"DI_Return_Float_High\":true}".to_string(),
+                updated_at: now - Duration::from_secs(TOPIC_HEALTH_EXPIRE_AFTER_SECONDS),
+            },
+        );
+        last_states.insert(
+            "reef/plc/state/inputs".to_string(),
+            CachedState {
+                payload: "{\"Temp_Sump_1\":78.3}".to_string(),
+                updated_at: now - Duration::from_secs(TOPIC_HEALTH_EXPIRE_AFTER_SECONDS + 1),
+            },
+        );
+
+        let states = fresh_cached_states(&layout, &last_states, now);
+
+        assert_eq!(
+            states,
+            vec![
+                ("reef/plc/state/di", "{\"DI_Return_Float_High\":true}"),
+                ("reef/plc/state/alarms", "{\"Alarm_Ph\":true}")
+            ]
+        );
+    }
+
+    #[test]
+    fn reconnect_backoff_doubles_caps_and_resets() {
+        let mut backoff = ReconnectBackoff::new(Duration::from_secs(1), Duration::from_secs(5));
+
+        assert_eq!(backoff.next_delay(), Duration::from_secs(1));
+        assert_eq!(backoff.next_delay(), Duration::from_secs(2));
+        assert_eq!(backoff.next_delay(), Duration::from_secs(4));
+        assert_eq!(backoff.next_delay(), Duration::from_secs(5));
+        assert_eq!(backoff.next_delay(), Duration::from_secs(5));
+
+        backoff.reset();
+
+        assert_eq!(backoff.next_delay(), Duration::from_secs(1));
     }
 
     fn discovery_components(options: &AppOptions, layout: &Layout) -> Map<String, Value> {

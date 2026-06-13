@@ -34,6 +34,15 @@ topic. The availability topic tracks the normalizer app MQTT client through a
 retained online payload and retained LWT offline payload; `expire_after` tracks
 per-topic freshness.
 
+## MQTT Recovery
+
+The app keeps polling the MQTT event loop after transient connection failures.
+After each successful connection or reconnection, it republishes its retained
+availability payload, resubscribes to PLC and Home Assistant status topics, and
+republishes retained Home Assistant discovery. Recent normalized states are
+replayed only while they are still within the topic-health freshness window, so
+a long broker outage does not make stale PLC data appear fresh.
+
 ## Packed MQTT Layout
 
 The packed MQTT topic layout and per-field Home Assistant discovery metadata are
