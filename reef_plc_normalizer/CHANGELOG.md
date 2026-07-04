@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.8
+
 - Add the not-auto-mode time alarm to the packed alarm topic.
 
 ## 0.1.7
