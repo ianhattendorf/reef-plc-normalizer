@@ -802,12 +802,13 @@ mod tests {
             .iter()
             .find(|spec| spec.kind == TopicKind::Alarms)
             .unwrap();
-        assert_eq!(alarms.fields.len(), 15);
+        assert_eq!(alarms.fields.len(), 16);
         assert_eq!(alarms.fields[0].source, "Alarm_Heater_Not_On");
         assert_eq!(alarms.fields[11].source, "Alarm_ATO_Runtime");
         assert_eq!(alarms.fields[12].source, "Alarm_Heater_1_On_Time");
         assert_eq!(alarms.fields[13].source, "Alarm_Ph");
         assert_eq!(alarms.fields[14].source, "Alarm_Return_Float_Low_Time");
+        assert_eq!(alarms.fields[15].source, "Alarm_Not_Auto_Mode_Time");
 
         let ato = layout
             .topics
@@ -829,7 +830,7 @@ mod tests {
             .iter()
             .find(|spec| spec.kind == TopicKind::Alarms)
             .unwrap();
-        let state = parse_payload(spec, "1,0,0,1,0,1,0,0,1,0,1,0,1,0,1,").unwrap();
+        let state = parse_payload(spec, "1,0,0,1,0,1,0,0,1,0,1,0,1,0,1,0,").unwrap();
 
         assert_eq!(state["Alarm_Heater_Not_On"], json!(true));
         assert_eq!(state["Alarm_Heater_On"], json!(false));
@@ -838,6 +839,7 @@ mod tests {
         assert_eq!(state["Alarm_Heater_1_On_Time"], json!(true));
         assert_eq!(state["Alarm_Ph"], json!(false));
         assert_eq!(state["Alarm_Return_Float_Low_Time"], json!(true));
+        assert_eq!(state["Alarm_Not_Auto_Mode_Time"], json!(false));
     }
 
     #[test]
