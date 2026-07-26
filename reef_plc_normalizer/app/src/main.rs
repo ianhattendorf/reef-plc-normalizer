@@ -868,11 +868,13 @@ mod tests {
             .unwrap();
         let state = parse_payload(
             spec,
-            "78.3,78.1,78.3,0.57,0.40,0.00,0.41,0.35,0.12,0.10,0,1,1,0.05,1,8.12,",
+            "78.34,78.12,78.34,0.57,0.40,0.00,0.41,0.35,0.12,0.10,0,1,1,0.05,1,8.12,",
         )
         .unwrap();
 
-        assert_eq!(state["Temp_Sump_1"], json!(78.3));
+        assert_eq!(state["Temp_Sump_1"], json!(78.34));
+        assert_eq!(state["Temp_Sump_2"], json!(78.12));
+        assert_eq!(state["Temp_Sump_Max"], json!(78.34));
         assert_eq!(state["Ph_Transmitter"], json!(8.12));
         assert_eq!(state["Heater_2_Amps"], json!(0.0));
         assert_eq!(state["Wavemakers_Amps"], json!(0.10));
@@ -963,6 +965,20 @@ mod tests {
         assert!(components.contains_key("ato_timer_current"));
         assert!(components.contains_key("ai_topic_online"));
         assert!(!components.contains_key("ai_ct_ac_total"));
+    }
+
+    #[test]
+    fn discovery_suggests_two_decimal_places_for_sump_temperatures() {
+        let layout = test_layout();
+        let options = test_options(false);
+        let components = discovery_components(&options, &layout);
+
+        for component_id in ["temp_sump_1", "temp_sump_2", "temp_sump_max"] {
+            assert_eq!(
+                components[component_id]["suggested_display_precision"],
+                json!(2)
+            );
+        }
     }
 
     #[test]

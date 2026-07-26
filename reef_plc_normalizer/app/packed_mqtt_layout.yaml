@@ -385,7 +385,7 @@ topics:
     state_topic: reef/plc/state/inputs
     fields:
       - source: Temp_Sump_1
-        length: 4
+        length: 5
         value_type: float
         discovery:
           domain: sensor
@@ -393,9 +393,9 @@ topics:
           unit_of_measurement: "°F"
           device_class: temperature
           state_class: measurement
-          suggested_display_precision: 1
+          suggested_display_precision: 2
       - source: Temp_Sump_2
-        length: 4
+        length: 5
         value_type: float
         discovery:
           domain: sensor
@@ -403,10 +403,10 @@ topics:
           unit_of_measurement: "°F"
           device_class: temperature
           state_class: measurement
-          suggested_display_precision: 1
+          suggested_display_precision: 2
           enabled_by_default: false
       - source: Temp_Sump_Max
-        length: 4
+        length: 5
         value_type: float
         discovery:
           domain: sensor
@@ -414,7 +414,7 @@ topics:
           unit_of_measurement: "°F"
           device_class: temperature
           state_class: measurement
-          suggested_display_precision: 1
+          suggested_display_precision: 2
       - source: Total_Amps
         length: 4
         value_type: float
