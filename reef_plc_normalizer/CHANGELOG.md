@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.9
+
 - Increase sump temperature precision to two decimal places.
 
 ## 0.1.8
