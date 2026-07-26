@@ -4,8 +4,10 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 app_dir="$repo_root/reef_plc_normalizer"
 cargo_toml="$app_dir/app/Cargo.toml"
+cargo_lock="$app_dir/app/Cargo.lock"
 config_yaml="$app_dir/config.yaml"
 changelog="$app_dir/CHANGELOG.md"
+package_name="reef-plc-normalizer"
 remote="origin"
 branch="main"
 push=1
@@ -204,7 +206,28 @@ awk -v version="$target_version" '
 ' "$changelog" > "$changelog_tmp"
 mv "$changelog_tmp" "$changelog"
 
-cargo generate-lockfile --manifest-path "$cargo_toml"
+lock_tmp="$(mktemp)"
+if ! awk -v package_name="$package_name" -v version="$target_version" '
+  $0 == "[[package]]" {
+    in_package = 1
+    package_matches = 0
+  }
+  in_package && $0 == "name = \"" package_name "\"" {
+    package_matches = 1
+  }
+  in_package && package_matches && /^version = "/ {
+    print "version = \"" version "\""
+    updated += 1
+    next
+  }
+  { print }
+  END {
+    exit(updated == 1 ? 0 : 1)
+  }
+' "$cargo_lock" > "$lock_tmp"; then
+  fail "could not update exactly one $package_name package entry in $cargo_lock"
+fi
+mv "$lock_tmp" "$cargo_lock"
 
 "$repo_root/scripts/check-release.sh"
 cargo fmt --manifest-path "$cargo_toml" -- --check

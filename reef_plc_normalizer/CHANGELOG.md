@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve locked dependency versions when preparing releases.
+
 ## 0.1.9
 
 - Increase sump temperature precision to two decimal places.
