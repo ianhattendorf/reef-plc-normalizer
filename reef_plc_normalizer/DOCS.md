@@ -1,7 +1,7 @@
 # Reef PLC Normalizer
 
-This app turns fixed-length packed MQTT strings from the AutomationDirect P1-550
-reef PLC into Home Assistant MQTT entities.
+This app turns fixed-length packed MQTT strings and the clock timestamp from the
+AutomationDirect P1-550 reef PLC into Home Assistant MQTT entities.
 
 ## Options
 
@@ -18,16 +18,17 @@ reef PLC into Home Assistant MQTT entities.
 
 Each PLC topic has a fixed field count. The app trims whitespace, accepts one
 trailing comma, and rejects payloads with the wrong number of fields or invalid
-values. Rejected payloads are logged and do not update Home Assistant state.
+values. The PLC clock must use `YYYY-MM-DDTHH:MM:SS±HH:MM` ISO 8601 format.
+Rejected payloads are logged and do not update Home Assistant state.
 
 ## Topic Health
 
 The app publishes diagnostic MQTT binary sensor discovery for each normalized
-state topic: DI, DO, AI, inputs, alarms, ATO, and time sync. These entities use
-the normalized state topic as their `state_topic`, always render the latest
-payload as `ON`, and set `expire_after: 60`. If one PLC topic stops producing
-fresh payloads while the app stays online, only that topic-health entity becomes
-unavailable.
+state topic: DI, DO, AI, inputs, alarms, ATO, time sync, and clock. These
+entities use the normalized state topic as their `state_topic`, always render
+the latest payload as `ON`, and set `expire_after: 60`. If one PLC topic stops
+producing fresh payloads while the app stays online, only that topic-health
+entity becomes unavailable.
 
 The topic-health entities also use `reef/plc/status` as their availability
 topic. The availability topic tracks the normalizer app MQTT client through a

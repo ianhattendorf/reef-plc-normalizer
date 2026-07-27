@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add the PLC clock as a Home Assistant timestamp sensor.
+
 ## 0.1.10
 
 - Add PLC SNTP time-sync alarm, battery, and counter entities.

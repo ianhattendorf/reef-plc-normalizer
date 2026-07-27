@@ -765,3 +765,16 @@ topics:
           name: Time Sync Success Count
           state_class: total_increasing
           entity_category: diagnostic
+
+  - kind: clock
+    source_topic: plc/aquarium/clock
+    state_topic: reef/plc/state/clock
+    fields:
+      - source: PLC_Clock
+        length: 25
+        value_type: timestamp
+        discovery:
+          domain: sensor
+          name: Clock
+          device_class: timestamp
+          entity_category: diagnostic

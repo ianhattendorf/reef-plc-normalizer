@@ -1,18 +1,18 @@
 # Reef PLC Normalizer
 
 Home Assistant App that normalizes AutomationDirect P1-550 packed MQTT payloads
-for reef tank monitoring.
+and exposes the PLC clock for reef tank monitoring.
 
-The app subscribes to the raw PLC topics, validates the packed CSV field counts,
-publishes normalized JSON state topics, and publishes retained Home Assistant
-MQTT device discovery.
+The app subscribes to the raw PLC topics, validates packed CSV and ISO 8601
+clock payloads, publishes normalized JSON state topics, and publishes retained
+Home Assistant MQTT device discovery.
 
 ## MQTT Flow
 
 - Input: `plc/aquarium/di`, `plc/aquarium/do`, `plc/aquarium/ai`,
   `plc/aquarium/inputs`, `plc/aquarium/alarms`, `plc/aquarium/ato`,
-  `plc/aquarium/time_sync`
-- State output: `reef/plc/state/{di,do,ai,inputs,alarms,ato,time_sync}`
+  `plc/aquarium/time_sync`, `plc/aquarium/clock`
+- State output: `reef/plc/state/{di,do,ai,inputs,alarms,ato,time_sync,clock}`
 - Availability: `reef/plc/status`
 - Discovery: `homeassistant/{sensor,binary_sensor}/reef_plc_<entity>/config`
 

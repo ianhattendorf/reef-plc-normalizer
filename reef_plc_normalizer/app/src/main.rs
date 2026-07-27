@@ -65,6 +65,7 @@ enum TopicKind {
     Alarms,
     Ato,
     TimeSync,
+    Clock,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
@@ -73,6 +74,7 @@ enum ValueType {
     Bool,
     Float,
     Int,
+    Timestamp,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
@@ -189,6 +191,12 @@ enum ParsePayloadError {
         field: String,
         value: String,
     },
+    #[error("invalid timestamp value for {topic}.{field}: {value:?}")]
+    InvalidTimestamp {
+        topic: String,
+        field: String,
+        value: String,
+    },
 }
 
 #[tokio::main]
@@ -280,7 +288,7 @@ fn validate_layout(layout: &Layout) -> Result<()> {
 
             match (field.value_type, field.discovery.domain) {
                 (ValueType::Bool, Domain::BinarySensor) => {}
-                (ValueType::Float | ValueType::Int, Domain::Sensor) => {}
+                (ValueType::Float | ValueType::Int | ValueType::Timestamp, Domain::Sensor) => {}
                 _ => anyhow::bail!(
                     "packed MQTT layout field {} has incompatible value_type/domain",
                     field.source
@@ -529,7 +537,88 @@ fn parse_value(topic: &str, field: &Field, value: &str) -> Result<Value, ParsePa
                     value: value.to_string(),
                 })
         }
+        ValueType::Timestamp => {
+            if is_plc_timestamp(value) {
+                Ok(Value::String(value.to_string()))
+            } else {
+                Err(ParsePayloadError::InvalidTimestamp {
+                    topic: topic.to_string(),
+                    field: field.source.clone(),
+                    value: value.to_string(),
+                })
+            }
+        }
     }
+}
+
+fn is_plc_timestamp(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    if bytes.len() != 25
+        || bytes[4] != b'-'
+        || bytes[7] != b'-'
+        || bytes[10] != b'T'
+        || bytes[13] != b':'
+        || bytes[16] != b':'
+        || !matches!(bytes[19], b'+' | b'-')
+        || bytes[22] != b':'
+    {
+        return false;
+    }
+
+    let Some(year) = parse_digits(bytes, 0, 4) else {
+        return false;
+    };
+    let Some(month) = parse_digits(bytes, 5, 2) else {
+        return false;
+    };
+    let Some(day) = parse_digits(bytes, 8, 2) else {
+        return false;
+    };
+    let Some(hour) = parse_digits(bytes, 11, 2) else {
+        return false;
+    };
+    let Some(minute) = parse_digits(bytes, 14, 2) else {
+        return false;
+    };
+    let Some(second) = parse_digits(bytes, 17, 2) else {
+        return false;
+    };
+    let Some(offset_hour) = parse_digits(bytes, 20, 2) else {
+        return false;
+    };
+    let Some(offset_minute) = parse_digits(bytes, 23, 2) else {
+        return false;
+    };
+
+    let days_in_month = match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if is_leap_year(year) => 29,
+        2 => 28,
+        _ => return false,
+    };
+
+    (1..=days_in_month).contains(&day)
+        && hour <= 23
+        && minute <= 59
+        && second <= 59
+        && offset_hour <= 23
+        && offset_minute <= 59
+}
+
+fn parse_digits(bytes: &[u8], start: usize, length: usize) -> Option<u32> {
+    bytes
+        .get(start..start + length)?
+        .iter()
+        .try_fold(0_u32, |value, digit| {
+            digit
+                .is_ascii_digit()
+                .then_some(value * 10 + u32::from(digit - b'0'))
+        })
+}
+
+fn is_leap_year(year: u32) -> bool {
+    year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
 }
 
 fn parse_bool(value: &str) -> Option<bool> {
@@ -618,7 +707,7 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
                     component.insert("payload_on".to_string(), Value::String("ON".to_string()));
                     component.insert("payload_off".to_string(), Value::String("OFF".to_string()));
                 }
-                ValueType::Float | ValueType::Int => {
+                ValueType::Float | ValueType::Int | ValueType::Timestamp => {
                     component.insert(
                         "value_template".to_string(),
                         Value::String(format!(
@@ -747,6 +836,7 @@ impl TopicKind {
             Self::Alarms => "alarms",
             Self::Ato => "ato",
             Self::TimeSync => "time_sync",
+            Self::Clock => "clock",
         }
     }
 
@@ -759,6 +849,7 @@ impl TopicKind {
             Self::Alarms => "Alarms",
             Self::Ato => "ATO",
             Self::TimeSync => "Time Sync",
+            Self::Clock => "Clock",
         }
     }
 }
@@ -772,7 +863,7 @@ mod tests {
     fn embedded_layout_loads_and_validates() {
         let layout = test_layout();
 
-        assert_eq!(layout.topics.len(), 7);
+        assert_eq!(layout.topics.len(), 8);
         assert!(layout
             .topics
             .iter()
@@ -785,6 +876,10 @@ mod tests {
             .topics
             .iter()
             .any(|spec| spec.source_topic == "plc/aquarium/time_sync"));
+        assert!(layout
+            .topics
+            .iter()
+            .any(|spec| spec.source_topic == "plc/aquarium/clock"));
 
         let di = layout
             .topics
@@ -845,6 +940,16 @@ mod tests {
             "Time_Sync_Success_Count.Counter"
         );
         assert_eq!(time_sync.fields[3].length, 5);
+
+        let clock = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::Clock)
+            .unwrap();
+        assert_eq!(clock.fields.len(), 1);
+        assert_eq!(clock.fields[0].source, "PLC_Clock");
+        assert_eq!(clock.fields[0].length, 25);
+        assert_eq!(clock.fields[0].value_type, ValueType::Timestamp);
     }
 
     #[test]
@@ -897,6 +1002,39 @@ mod tests {
         assert_eq!(state["Battery Low Bit"], json!(false));
         assert_eq!(state["Time_Sync_Error_Count.Counter"], json!(12));
         assert_eq!(state["Time_Sync_Success_Count.Counter"], json!(345));
+    }
+
+    #[test]
+    fn parses_clock_payloads() {
+        let layout = test_layout();
+        let spec = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::Clock)
+            .unwrap();
+        let state = parse_payload(spec, "2026-07-26T18:11:10-07:00").unwrap();
+
+        assert_eq!(state["PLC_Clock"], json!("2026-07-26T18:11:10-07:00"));
+    }
+
+    #[test]
+    fn rejects_invalid_clock_payloads() {
+        let layout = test_layout();
+        let spec = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::Clock)
+            .unwrap();
+
+        for payload in [
+            "2026-02-29T18:11:10-07:00",
+            "2026-07-26 18:11:10-07:00",
+            "2026-07-26T25:11:10-07:00",
+            "not-a-timestamp",
+        ] {
+            let err = parse_payload(spec, payload).unwrap_err();
+            assert!(matches!(err, ParsePayloadError::InvalidTimestamp { .. }));
+        }
     }
 
     #[test]
@@ -1060,6 +1198,27 @@ mod tests {
     }
 
     #[test]
+    fn discovery_includes_plc_clock_timestamp() {
+        let layout = test_layout();
+        let options = test_options(false);
+        let components = discovery_components(&options, &layout);
+
+        assert_eq!(
+            components["plc_clock"]["state_topic"],
+            json!("reef/plc/state/clock")
+        );
+        assert_eq!(
+            components["plc_clock"]["value_template"],
+            json!("{{ value_json[\"PLC_Clock\"] }}")
+        );
+        assert_eq!(components["plc_clock"]["device_class"], json!("timestamp"));
+        assert_eq!(
+            components["plc_clock"]["entity_category"],
+            json!("diagnostic")
+        );
+    }
+
+    #[test]
     fn discovery_includes_topic_health_sensors() {
         let layout = test_layout();
         let options = test_options(false);
@@ -1074,6 +1233,7 @@ mod tests {
             ("alarms_topic_online", "reef/plc/state/alarms"),
             ("ato_topic_online", "reef/plc/state/ato"),
             ("time_sync_topic_online", "reef/plc/state/time_sync"),
+            ("clock_topic_online", "reef/plc/state/clock"),
         ] {
             assert!(messages.iter().any(|(topic, _)| topic
                 == &format!("homeassistant/binary_sensor/reef_plc_{component_id}/config")));
