@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.11
+
 - Add the PLC clock as a Home Assistant timestamp sensor.
 
 ## 0.1.10
