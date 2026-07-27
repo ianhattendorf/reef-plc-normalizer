@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.12
+
 - Allow 390 seconds before marking the five-minute PLC clock topic stale.
 - Publish the PLC clock's signed receipt-time offset for reliable Home Assistant alerts.
 
