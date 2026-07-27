@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.10
+
 - Add PLC SNTP time-sync alarm, battery, and counter entities.
 - Preserve locked dependency versions when preparing releases.
 
