@@ -10,8 +10,9 @@ MQTT device discovery.
 ## MQTT Flow
 
 - Input: `plc/aquarium/di`, `plc/aquarium/do`, `plc/aquarium/ai`,
-  `plc/aquarium/inputs`, `plc/aquarium/alarms`, `plc/aquarium/ato`
-- State output: `reef/plc/state/{di,do,ai,inputs,alarms,ato}`
+  `plc/aquarium/inputs`, `plc/aquarium/alarms`, `plc/aquarium/ato`,
+  `plc/aquarium/time_sync`
+- State output: `reef/plc/state/{di,do,ai,inputs,alarms,ato,time_sync}`
 - Availability: `reef/plc/status`
 - Discovery: `homeassistant/{sensor,binary_sensor}/reef_plc_<entity>/config`
 

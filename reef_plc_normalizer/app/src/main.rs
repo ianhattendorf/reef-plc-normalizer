@@ -64,6 +64,7 @@ enum TopicKind {
     Inputs,
     Alarms,
     Ato,
+    TimeSync,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
@@ -745,6 +746,7 @@ impl TopicKind {
             Self::Inputs => "inputs",
             Self::Alarms => "alarms",
             Self::Ato => "ato",
+            Self::TimeSync => "time_sync",
         }
     }
 
@@ -756,6 +758,7 @@ impl TopicKind {
             Self::Inputs => "Inputs",
             Self::Alarms => "Alarms",
             Self::Ato => "ATO",
+            Self::TimeSync => "Time Sync",
         }
     }
 }
@@ -769,7 +772,7 @@ mod tests {
     fn embedded_layout_loads_and_validates() {
         let layout = test_layout();
 
-        assert_eq!(layout.topics.len(), 6);
+        assert_eq!(layout.topics.len(), 7);
         assert!(layout
             .topics
             .iter()
@@ -778,6 +781,10 @@ mod tests {
             .topics
             .iter()
             .any(|spec| spec.source_topic == "plc/aquarium/alarms"));
+        assert!(layout
+            .topics
+            .iter()
+            .any(|spec| spec.source_topic == "plc/aquarium/time_sync"));
 
         let di = layout
             .topics
@@ -820,6 +827,24 @@ mod tests {
         assert_eq!(ato.fields[7].length, 4);
         assert_eq!(ato.fields[8].source, "ATO_Acc_mL");
         assert_eq!(ato.fields[8].length, 4);
+
+        let time_sync = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::TimeSync)
+            .unwrap();
+        assert_eq!(time_sync.fields.len(), 4);
+        assert_eq!(time_sync.fields[0].source, "Alarm_Time_Sync");
+        assert_eq!(time_sync.fields[0].length, 1);
+        assert_eq!(time_sync.fields[1].source, "Battery Low Bit");
+        assert_eq!(time_sync.fields[1].length, 1);
+        assert_eq!(time_sync.fields[2].source, "Time_Sync_Error_Count.Counter");
+        assert_eq!(time_sync.fields[2].length, 5);
+        assert_eq!(
+            time_sync.fields[3].source,
+            "Time_Sync_Success_Count.Counter"
+        );
+        assert_eq!(time_sync.fields[3].length, 5);
     }
 
     #[test]
@@ -856,6 +881,22 @@ mod tests {
         assert_eq!(state["ATO_Timer.Done"], json!(true));
         assert_eq!(state["ATO_Current_mL"], json!(42));
         assert_eq!(state["ATO_Acc_mL"], json!(1234));
+    }
+
+    #[test]
+    fn parses_time_sync_payloads() {
+        let layout = test_layout();
+        let spec = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::TimeSync)
+            .unwrap();
+        let state = parse_payload(spec, "1,0,00012,00345,").unwrap();
+
+        assert_eq!(state["Alarm_Time_Sync"], json!(true));
+        assert_eq!(state["Battery Low Bit"], json!(false));
+        assert_eq!(state["Time_Sync_Error_Count.Counter"], json!(12));
+        assert_eq!(state["Time_Sync_Success_Count.Counter"], json!(345));
     }
 
     #[test]
@@ -982,6 +1023,43 @@ mod tests {
     }
 
     #[test]
+    fn discovery_includes_time_sync_diagnostics() {
+        let layout = test_layout();
+        let options = test_options(false);
+        let components = discovery_components(&options, &layout);
+
+        assert_eq!(
+            components["alarm_time_sync"]["state_topic"],
+            json!("reef/plc/state/time_sync")
+        );
+        assert_eq!(
+            components["alarm_time_sync"]["value_template"],
+            json!("{{ 'ON' if value_json[\"Alarm_Time_Sync\"] else 'OFF' }}")
+        );
+        assert_eq!(
+            components["alarm_time_sync"]["device_class"],
+            json!("problem")
+        );
+        assert_eq!(
+            components["battery_low_bit"]["value_template"],
+            json!("{{ 'ON' if value_json[\"Battery Low Bit\"] else 'OFF' }}")
+        );
+        for component_id in [
+            "time_sync_error_count_counter",
+            "time_sync_success_count_counter",
+        ] {
+            assert_eq!(
+                components[component_id]["state_class"],
+                json!("total_increasing")
+            );
+            assert_eq!(
+                components[component_id]["entity_category"],
+                json!("diagnostic")
+            );
+        }
+    }
+
+    #[test]
     fn discovery_includes_topic_health_sensors() {
         let layout = test_layout();
         let options = test_options(false);
@@ -995,6 +1073,7 @@ mod tests {
             ("inputs_topic_online", "reef/plc/state/inputs"),
             ("alarms_topic_online", "reef/plc/state/alarms"),
             ("ato_topic_online", "reef/plc/state/ato"),
+            ("time_sync_topic_online", "reef/plc/state/time_sync"),
         ] {
             assert!(messages.iter().any(|(topic, _)| topic
                 == &format!("homeassistant/binary_sensor/reef_plc_{component_id}/config")));

@@ -728,3 +728,40 @@ topics:
           name: ATO Accumulated
           unit_of_measurement: mL
           state_class: measurement
+
+  - kind: time_sync
+    source_topic: plc/aquarium/time_sync
+    state_topic: reef/plc/state/time_sync
+    fields:
+      - source: Alarm_Time_Sync
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Time Sync Alarm
+          device_class: problem
+          entity_category: diagnostic
+      - source: Battery Low Bit
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: Battery Low
+          device_class: problem
+          entity_category: diagnostic
+      - source: Time_Sync_Error_Count.Counter
+        length: 5
+        value_type: int
+        discovery:
+          domain: sensor
+          name: Time Sync Error Count
+          state_class: total_increasing
+          entity_category: diagnostic
+      - source: Time_Sync_Success_Count.Counter
+        length: 5
+        value_type: int
+        discovery:
+          domain: sensor
+          name: Time Sync Success Count
+          state_class: total_increasing
+          entity_category: diagnostic
