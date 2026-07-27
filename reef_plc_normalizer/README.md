@@ -5,7 +5,9 @@ and exposes the PLC clock for reef tank monitoring.
 
 The app subscribes to the raw PLC topics, validates packed CSV and ISO 8601
 clock payloads, publishes normalized JSON state topics, and publishes retained
-Home Assistant MQTT device discovery.
+Home Assistant MQTT device discovery. The normalized clock state includes both
+the PLC timestamp and a signed receipt-time offset in seconds; positive means
+the PLC clock is behind the normalizer host and negative means it is ahead.
 
 ## MQTT Flow
 
@@ -18,7 +20,8 @@ Home Assistant MQTT device discovery.
 
 The app also publishes diagnostic topic-health binary sensors for each normalized
 state topic. They use Home Assistant MQTT `expire_after` to become unavailable
-when a PLC topic stops updating for 60 seconds.
+when a PLC topic stops updating. The clock allows 390 seconds for a five-minute
+publish interval; the other topics allow 60 seconds.
 
 Home Assistant remains observe-only. Relay outputs are exposed as binary sensors,
 not switches.

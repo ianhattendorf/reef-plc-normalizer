@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
+use chrono::DateTime;
 use clap::Parser;
 use rumqttc::{AsyncClient, Event, EventLoop, Incoming, LastWill, MqttOptions, QoS};
 use serde::Deserialize;
@@ -21,7 +22,10 @@ const AVAILABILITY_TOPIC: &str = "reef/plc/status";
 const HA_STATUS_TOPIC: &str = "homeassistant/status";
 const PACKED_MQTT_LAYOUT: &str = include_str!("../packed_mqtt_layout.yaml");
 const MQTT_REQUEST_CHANNEL_CAPACITY: usize = 256;
-const TOPIC_HEALTH_EXPIRE_AFTER_SECONDS: u64 = 60;
+const DEFAULT_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS: u64 = 60;
+const CLOCK_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS: u64 = 390;
+const CACHED_STATE_REPLAY_MAX_AGE_SECONDS: u64 = 60;
+const CLOCK_OFFSET_FIELD: &str = "Clock_Offset_Seconds";
 const MQTT_RECONNECT_INITIAL_DELAY: Duration = Duration::from_secs(1);
 const MQTT_RECONNECT_MAX_DELAY: Duration = Duration::from_secs(30);
 
@@ -396,7 +400,7 @@ fn fresh_cached_states<'a>(
         .filter_map(|spec| {
             let cached = last_states.get(&spec.state_topic)?;
             let age = now.saturating_duration_since(cached.updated_at);
-            (age <= Duration::from_secs(TOPIC_HEALTH_EXPIRE_AFTER_SECONDS))
+            (age <= Duration::from_secs(CACHED_STATE_REPLAY_MAX_AGE_SECONDS))
                 .then_some((spec.state_topic.as_str(), cached.payload.as_str()))
         })
         .collect()
@@ -443,7 +447,7 @@ async fn poll_loop(
                     continue;
                 };
 
-                match parse_payload(spec, &payload) {
+                match normalize_payload(spec, &payload, SystemTime::now()) {
                     Ok(state) => {
                         let state_payload = serde_json::to_string(&state)
                             .context("failed to serialize normalized state")?;
@@ -502,6 +506,46 @@ fn parse_payload(spec: &TopicSpec, payload: &str) -> Result<Map<String, Value>, 
     }
 
     Ok(state)
+}
+
+fn normalize_payload(
+    spec: &TopicSpec,
+    payload: &str,
+    received_at: SystemTime,
+) -> Result<Map<String, Value>, ParsePayloadError> {
+    let mut state = parse_payload(spec, payload)?;
+
+    if spec.kind == TopicKind::Clock {
+        let plc_clock = state
+            .get("PLC_Clock")
+            .and_then(Value::as_str)
+            .ok_or_else(|| ParsePayloadError::InvalidTimestamp {
+                topic: spec.source_topic.clone(),
+                field: "PLC_Clock".to_string(),
+                value: String::new(),
+            })?;
+        let plc_timestamp = DateTime::parse_from_rfc3339(plc_clock).map_err(|_| {
+            ParsePayloadError::InvalidTimestamp {
+                topic: spec.source_topic.clone(),
+                field: "PLC_Clock".to_string(),
+                value: plc_clock.to_string(),
+            }
+        })?;
+        let receipt_seconds = system_time_unix_seconds(received_at);
+        let plc_seconds = plc_timestamp.timestamp_millis() as f64 / 1_000.0;
+        let offset_seconds = ((receipt_seconds - plc_seconds) * 1_000.0).round() / 1_000.0;
+
+        state.insert(CLOCK_OFFSET_FIELD.to_string(), Value::from(offset_seconds));
+    }
+
+    Ok(state)
+}
+
+fn system_time_unix_seconds(timestamp: SystemTime) -> f64 {
+    match timestamp.duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration.as_secs_f64(),
+        Err(err) => -err.duration().as_secs_f64(),
+    }
 }
 
 fn split_csv(payload: &str) -> Vec<&str> {
@@ -662,6 +706,9 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
 
     for spec in &layout.topics {
         messages.push(topic_health_discovery_message(options, spec));
+        if spec.kind == TopicKind::Clock {
+            messages.push(clock_offset_discovery_message(options, spec));
+        }
 
         if spec.kind == TopicKind::Ai && !options.publish_diagnostic_ai {
             continue;
@@ -767,6 +814,31 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
     messages
 }
 
+fn clock_offset_discovery_message(options: &AppOptions, spec: &TopicSpec) -> (String, Value) {
+    let component_id = "clock_offset_seconds";
+    let payload = json!({
+        "unique_id": format!("{DEVICE_ID}_{component_id}"),
+        "name": "Clock Offset",
+        "state_topic": spec.state_topic.as_str(),
+        "value_template": format!("{{{{ value_json[{}] }}}}", jinja_key(CLOCK_OFFSET_FIELD)),
+        "unit_of_measurement": "s",
+        "state_class": "measurement",
+        "suggested_display_precision": 1,
+        "availability_topic": AVAILABILITY_TOPIC,
+        "payload_available": "online",
+        "payload_not_available": "offline",
+        "entity_category": "diagnostic",
+        "device": device_payload(),
+        "origin": origin_payload(),
+    });
+    let discovery_topic = format!(
+        "{}/sensor/{DEVICE_ID}_{component_id}/config",
+        options.discovery_prefix
+    );
+
+    (discovery_topic, payload)
+}
+
 fn topic_health_discovery_message(options: &AppOptions, spec: &TopicSpec) -> (String, Value) {
     let component_id = format!("{}_topic_online", spec.kind.as_str());
     let payload = json!({
@@ -775,7 +847,7 @@ fn topic_health_discovery_message(options: &AppOptions, spec: &TopicSpec) -> (St
         "state_topic": spec.state_topic.as_str(),
         "value_template": "ON",
         "payload_on": "ON",
-        "expire_after": TOPIC_HEALTH_EXPIRE_AFTER_SECONDS,
+        "expire_after": spec.kind.topic_health_expire_after_seconds(),
         "availability_topic": AVAILABILITY_TOPIC,
         "payload_available": "online",
         "payload_not_available": "offline",
@@ -850,6 +922,13 @@ impl TopicKind {
             Self::Ato => "ATO",
             Self::TimeSync => "Time Sync",
             Self::Clock => "Clock",
+        }
+    }
+
+    fn topic_health_expire_after_seconds(self) -> u64 {
+        match self {
+            Self::Clock => CLOCK_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS,
+            _ => DEFAULT_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS,
         }
     }
 }
@@ -1015,6 +1094,24 @@ mod tests {
         let state = parse_payload(spec, "2026-07-26T18:11:10-07:00").unwrap();
 
         assert_eq!(state["PLC_Clock"], json!("2026-07-26T18:11:10-07:00"));
+    }
+
+    #[test]
+    fn normalizes_clock_with_receipt_derived_offset() {
+        let layout = test_layout();
+        let spec = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::Clock)
+            .unwrap();
+        let plc_timestamp = DateTime::parse_from_rfc3339("2026-07-26T18:11:10-07:00").unwrap();
+        let received_at =
+            UNIX_EPOCH + Duration::from_millis((plc_timestamp.timestamp_millis() + 2_500) as u64);
+
+        let state = normalize_payload(spec, "2026-07-26T18:11:10-07:00", received_at).unwrap();
+
+        assert_eq!(state["PLC_Clock"], json!("2026-07-26T18:11:10-07:00"));
+        assert_eq!(state[CLOCK_OFFSET_FIELD], json!(2.5));
     }
 
     #[test]
@@ -1219,6 +1316,45 @@ mod tests {
     }
 
     #[test]
+    fn discovery_includes_receipt_derived_clock_offset() {
+        let layout = test_layout();
+        let options = test_options(false);
+        let messages = discovery_messages(&options, &layout);
+        let components = discovery_components(&options, &layout);
+
+        assert!(
+            messages
+                .iter()
+                .any(|(topic, _)| topic
+                    == "homeassistant/sensor/reef_plc_clock_offset_seconds/config")
+        );
+        assert_eq!(
+            components["clock_offset_seconds"]["state_topic"],
+            json!("reef/plc/state/clock")
+        );
+        assert_eq!(
+            components["clock_offset_seconds"]["value_template"],
+            json!("{{ value_json[\"Clock_Offset_Seconds\"] }}")
+        );
+        assert_eq!(
+            components["clock_offset_seconds"]["unit_of_measurement"],
+            json!("s")
+        );
+        assert_eq!(
+            components["clock_offset_seconds"]["state_class"],
+            json!("measurement")
+        );
+        assert_eq!(
+            components["clock_offset_seconds"]["suggested_display_precision"],
+            json!(1)
+        );
+        assert_eq!(
+            components["clock_offset_seconds"]["entity_category"],
+            json!("diagnostic")
+        );
+    }
+
+    #[test]
     fn discovery_includes_topic_health_sensors() {
         let layout = test_layout();
         let options = test_options(false);
@@ -1244,7 +1380,15 @@ mod tests {
             assert_eq!(components[component_id]["state_topic"], json!(state_topic));
             assert_eq!(components[component_id]["value_template"], json!("ON"));
             assert_eq!(components[component_id]["payload_on"], json!("ON"));
-            assert_eq!(components[component_id]["expire_after"], json!(60));
+            let expected_expire_after = if component_id == "clock_topic_online" {
+                390
+            } else {
+                60
+            };
+            assert_eq!(
+                components[component_id]["expire_after"],
+                json!(expected_expire_after)
+            );
             assert_eq!(
                 components[component_id]["availability_topic"],
                 json!("reef/plc/status")
@@ -1358,14 +1502,22 @@ mod tests {
             "reef/plc/state/di".to_string(),
             CachedState {
                 payload: "{\"DI_Return_Float_High\":true}".to_string(),
-                updated_at: now - Duration::from_secs(TOPIC_HEALTH_EXPIRE_AFTER_SECONDS),
+                updated_at: now - Duration::from_secs(DEFAULT_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS),
             },
         );
         last_states.insert(
             "reef/plc/state/inputs".to_string(),
             CachedState {
                 payload: "{\"Temp_Sump_1\":78.3}".to_string(),
-                updated_at: now - Duration::from_secs(TOPIC_HEALTH_EXPIRE_AFTER_SECONDS + 1),
+                updated_at: now
+                    - Duration::from_secs(DEFAULT_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS + 1),
+            },
+        );
+        last_states.insert(
+            "reef/plc/state/clock".to_string(),
+            CachedState {
+                payload: "\"2026-07-26T12:00:00-07:00\"".to_string(),
+                updated_at: now - Duration::from_secs(300),
             },
         );
 

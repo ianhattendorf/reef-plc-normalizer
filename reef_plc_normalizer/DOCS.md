@@ -3,6 +3,15 @@
 This app turns fixed-length packed MQTT strings and the clock timestamp from the
 AutomationDirect P1-550 reef PLC into Home Assistant MQTT entities.
 
+The normalized clock payload preserves `PLC_Clock` and adds
+`Clock_Offset_Seconds`, calculated when the raw PLC message is received:
+
+`normalizer receipt time - PLC clock time`
+
+A positive offset means the PLC clock is behind; a negative offset means it is
+ahead. Home Assistant should use this numeric entity for clock-offset alerts
+instead of deriving receipt time from entity state metadata.
+
 ## Options
 
 - `mqtt_host`: MQTT broker host.
@@ -25,10 +34,12 @@ Rejected payloads are logged and do not update Home Assistant state.
 
 The app publishes diagnostic MQTT binary sensor discovery for each normalized
 state topic: DI, DO, AI, inputs, alarms, ATO, time sync, and clock. These
-entities use the normalized state topic as their `state_topic`, always render
-the latest payload as `ON`, and set `expire_after: 60`. If one PLC topic stops
-producing fresh payloads while the app stays online, only that topic-health
-entity becomes unavailable.
+entities use the normalized state topic as their `state_topic` and always
+render the latest payload as `ON`. Most set `expire_after: 60`; the clock uses
+`expire_after: 390` to allow a five-minute publish interval plus 90 seconds of
+delivery and reconnect tolerance. If one PLC topic stops producing fresh
+payloads while the app stays online, only that topic-health entity becomes
+unavailable.
 
 The topic-health entities also use `reef/plc/status` as their availability
 topic. The availability topic tracks the normalizer app MQTT client through a
@@ -41,8 +52,10 @@ The app keeps polling the MQTT event loop after transient connection failures.
 After each successful connection or reconnection, it republishes its retained
 availability payload, resubscribes to PLC and Home Assistant status topics, and
 republishes retained Home Assistant discovery. Recent normalized states are
-replayed only while they are still within the topic-health freshness window, so
-a long broker outage does not make stale PLC data appear fresh.
+replayed only when they were received within the last 60 seconds. This
+conservative replay window remains shorter than the clock topic's 390-second
+expiry so a broker reconnect does not replay an older clock reading as newly
+received.
 
 ## Packed MQTT Layout
 
