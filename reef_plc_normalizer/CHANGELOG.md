@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.13
+
 - Expose the eighth PLC digital output as a confirmed-state MQTT cabinet light
   with direct PLC commands and combined PLC/normalizer availability.
 - Remove the former retained DC Relay 4 binary-sensor discovery record.
