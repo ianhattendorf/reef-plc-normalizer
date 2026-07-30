@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.14
+
 - Make the cabinet light optimistic so commands appear immediately while the
   next PLC digital-output state reconciles the result.
 
