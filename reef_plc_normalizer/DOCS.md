@@ -30,6 +30,32 @@ trailing comma, and rejects payloads with the wrong number of fields or invalid
 values. The PLC clock must use `YYYY-MM-DDTHH:MM:SS±HH:MM` ISO 8601 format.
 Rejected payloads are logged and do not update Home Assistant state.
 
+## Cabinet Light Control
+
+The eighth field in `plc/aquarium/do`, `DO_Relay_DC_4`, is discovered as
+`light.office_reef_cabinet`. Its MQTT flow is:
+
+- Home Assistant publishes `ON` or `OFF` to
+  `plc/aquarium/command/cabinet_light` with QoS 1 and retain disabled.
+- The PLC applies the request in ladder logic and publishes the effective
+  physical output in `plc/aquarium/do`.
+- The app publishes the normalized output in `reef/plc/state/do`; this confirmed
+  state drives the Home Assistant light.
+
+The light is non-optimistic and is available only when both retained status
+topics contain `online`:
+
+- `plc/aquarium/status`, owned by the PLC.
+- `reef/plc/status`, owned by this app.
+
+The PLC status topic should use retained `online` state and a retained `offline`
+last will. The app does not merge or republish PLC availability under its own
+status topic.
+
+On startup and reconnect, the app removes the former retained
+`homeassistant/binary_sensor/reef_plc_do_relay_dc_4/config` discovery record
+before publishing the cabinet-light discovery record.
+
 ## Topic Health
 
 The app publishes diagnostic MQTT binary sensor discovery for each normalized
@@ -68,4 +94,8 @@ embedded at build time and is not exposed as a Home Assistant option.
 Boolean fields can set `active_when: false` for normally-closed inputs where raw
 `0` means active. Individual entities can set
 `discovery.enabled_by_default: false` to publish Home Assistant discovery while
-leaving the entity disabled by default.
+leaving the entity disabled by default. A discovery entry can override its
+source-derived ID with `component_id`, seed its first Home Assistant entity ID
+with `default_entity_id`, and use the `light` domain with a required
+`command_topic`. Removed retained discovery records are listed explicitly under
+the top-level `removed_discovery` key.

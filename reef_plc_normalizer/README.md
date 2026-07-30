@@ -14,17 +14,23 @@ the PLC clock is behind the normalizer host and negative means it is ahead.
 - Input: `plc/aquarium/di`, `plc/aquarium/do`, `plc/aquarium/ai`,
   `plc/aquarium/inputs`, `plc/aquarium/alarms`, `plc/aquarium/ato`,
   `plc/aquarium/time_sync`, `plc/aquarium/clock`
+- Cabinet-light command: `plc/aquarium/command/cabinet_light`
 - State output: `reef/plc/state/{di,do,ai,inputs,alarms,ato,time_sync,clock}`
-- Availability: `reef/plc/status`
-- Discovery: `homeassistant/{sensor,binary_sensor}/reef_plc_<entity>/config`
+- Availability: `reef/plc/status`; the cabinet light also requires
+  `plc/aquarium/status`
+- Discovery:
+  `homeassistant/{sensor,binary_sensor,light}/reef_plc_<entity>/config`
 
 The app also publishes diagnostic topic-health binary sensors for each normalized
 state topic. They use Home Assistant MQTT `expire_after` to become unavailable
 when a PLC topic stops updating. The clock allows 390 seconds for a five-minute
 publish interval; the other topics allow 60 seconds.
 
-Home Assistant remains observe-only. Relay outputs are exposed as binary sensors,
-not switches.
+The eighth digital-output field, `DO_Relay_DC_4`, is exposed as the controllable
+Home Assistant light `light.office_reef_cabinet`. Home Assistant sends
+non-retained `ON` and `OFF` commands directly to the PLC, while the normalized
+digital-output payload supplies the confirmed light state. Other relay outputs
+remain observe-only binary sensors.
 
 ## Configuration
 

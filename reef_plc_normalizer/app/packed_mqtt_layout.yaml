@@ -1,4 +1,8 @@
 ---
+removed_discovery:
+  - domain: binary_sensor
+    object_id: reef_plc_do_relay_dc_4
+
 topics:
   - kind: di
     source_topic: plc/aquarium/di
@@ -187,10 +191,11 @@ topics:
         length: 1
         value_type: bool
         discovery:
-          domain: binary_sensor
-          name: DC Relay 4
-          device_class: power
-          enabled_by_default: false
+          domain: light
+          name: Cabinet Light
+          component_id: cabinet_light
+          default_entity_id: light.office_reef_cabinet
+          command_topic: plc/aquarium/command/cabinet_light
       - source: DO_Relay_DC_Refugium_Light
         length: 1
         value_type: bool

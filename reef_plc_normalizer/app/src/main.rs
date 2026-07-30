@@ -19,6 +19,7 @@ const CLIENT_ID: &str = "reef-plc-normalizer";
 const DEVICE_ID: &str = "reef_plc";
 const DEVICE_NAME: &str = "Reef PLC";
 const AVAILABILITY_TOPIC: &str = "reef/plc/status";
+const PLC_AVAILABILITY_TOPIC: &str = "plc/aquarium/status";
 const HA_STATUS_TOPIC: &str = "homeassistant/status";
 const PACKED_MQTT_LAYOUT: &str = include_str!("../packed_mqtt_layout.yaml");
 const MQTT_REQUEST_CHANNEL_CAPACITY: usize = 256;
@@ -81,10 +82,11 @@ enum ValueType {
     Timestamp,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 enum Domain {
     BinarySensor,
+    Light,
     Sensor,
 }
 
@@ -92,6 +94,7 @@ impl Domain {
     fn as_str(self) -> &'static str {
         match self {
             Self::BinarySensor => "binary_sensor",
+            Self::Light => "light",
             Self::Sensor => "sensor",
         }
     }
@@ -99,7 +102,15 @@ impl Domain {
 
 #[derive(Debug, Deserialize)]
 struct Layout {
+    #[serde(default)]
+    removed_discovery: Vec<RemovedDiscovery>,
     topics: Vec<TopicSpec>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RemovedDiscovery {
+    domain: Domain,
+    object_id: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -115,6 +126,9 @@ struct Field {
 struct FieldDiscovery {
     domain: Domain,
     name: String,
+    component_id: Option<String>,
+    default_entity_id: Option<String>,
+    command_topic: Option<String>,
     unit_of_measurement: Option<String>,
     device_class: Option<String>,
     state_class: Option<String>,
@@ -242,6 +256,21 @@ fn validate_layout(layout: &Layout) -> Result<()> {
     let mut source_topics = HashSet::new();
     let mut state_topics = HashSet::new();
     let mut field_sources = HashSet::new();
+    let mut component_ids = HashSet::new();
+    let mut removed_discovery_topics = HashSet::new();
+
+    for removed in &layout.removed_discovery {
+        anyhow::ensure!(
+            !removed.object_id.trim().is_empty(),
+            "removed discovery object_id cannot be empty"
+        );
+        anyhow::ensure!(
+            removed_discovery_topics.insert((removed.domain, removed.object_id.as_str())),
+            "duplicate removed discovery topic: {}/{}",
+            removed.domain.as_str(),
+            removed.object_id
+        );
+    }
 
     for spec in &layout.topics {
         anyhow::ensure!(
@@ -289,9 +318,19 @@ fn validate_layout(layout: &Layout) -> Result<()> {
                 "packed MQTT layout field {} has an empty discovery name",
                 field.source
             );
+            let component_id = field_component_id(field);
+            anyhow::ensure!(
+                !component_id.trim().is_empty(),
+                "packed MQTT layout field {} has an empty component_id",
+                field.source
+            );
+            anyhow::ensure!(
+                component_ids.insert(component_id.clone()),
+                "duplicate discovery component_id in packed MQTT layout: {component_id}"
+            );
 
             match (field.value_type, field.discovery.domain) {
-                (ValueType::Bool, Domain::BinarySensor) => {}
+                (ValueType::Bool, Domain::BinarySensor | Domain::Light) => {}
                 (ValueType::Float | ValueType::Int | ValueType::Timestamp, Domain::Sensor) => {}
                 _ => anyhow::bail!(
                     "packed MQTT layout field {} has incompatible value_type/domain",
@@ -303,6 +342,26 @@ fn validate_layout(layout: &Layout) -> Result<()> {
                 "packed MQTT layout field {} uses active_when on a non-bool field",
                 field.source
             );
+            match field.discovery.domain {
+                Domain::Light => {
+                    anyhow::ensure!(
+                        field
+                            .discovery
+                            .command_topic
+                            .as_deref()
+                            .is_some_and(|topic| !topic.trim().is_empty()),
+                        "packed MQTT light {} requires command_topic",
+                        field.source
+                    );
+                }
+                Domain::BinarySensor | Domain::Sensor => {
+                    anyhow::ensure!(
+                        field.discovery.command_topic.is_none(),
+                        "packed MQTT layout field {} uses command_topic outside the light domain",
+                        field.source
+                    );
+                }
+            }
         }
     }
 
@@ -682,11 +741,20 @@ async fn publish_discovery(
     options: &AppOptions,
     layout: &Layout,
 ) -> Result<()> {
+    let removed_topics = removed_discovery_topics(options, layout);
     let messages = discovery_messages(options, layout);
     info!(
         count = messages.len(),
+        removed_count = removed_topics.len(),
         "publishing Home Assistant discovery"
     );
+
+    for topic in removed_topics {
+        client
+            .publish(topic.as_str(), QoS::AtLeastOnce, true, Vec::<u8>::new())
+            .await
+            .with_context(|| format!("failed to remove legacy discovery at {topic}"))?;
+    }
 
     for (topic, payload) in messages {
         let payload =
@@ -699,6 +767,21 @@ async fn publish_discovery(
     }
 
     Ok(())
+}
+
+fn removed_discovery_topics(options: &AppOptions, layout: &Layout) -> Vec<String> {
+    layout
+        .removed_discovery
+        .iter()
+        .map(|removed| {
+            format!(
+                "{}/{}/{}/config",
+                options.discovery_prefix,
+                removed.domain.as_str(),
+                removed.object_id
+            )
+        })
+        .collect()
 }
 
 fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Value)> {
@@ -715,7 +798,7 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
         }
 
         for field in &spec.fields {
-            let component_id = component_id(&field.source);
+            let component_id = field_component_id(field);
             let mut component = Map::new();
             component.insert(
                 "unique_id".to_string(),
@@ -729,23 +812,16 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
                 "state_topic".to_string(),
                 Value::String(spec.state_topic.to_string()),
             );
-            component.insert(
-                "availability_topic".to_string(),
-                Value::String(AVAILABILITY_TOPIC.to_string()),
-            );
-            component.insert(
-                "payload_available".to_string(),
-                Value::String("online".to_string()),
-            );
-            component.insert(
-                "payload_not_available".to_string(),
-                Value::String("offline".to_string()),
-            );
+            insert_availability(&mut component, field.discovery.domain);
 
             match field.value_type {
                 ValueType::Bool => {
                     component.insert(
-                        "value_template".to_string(),
+                        if field.discovery.domain == Domain::Light {
+                            "state_value_template".to_string()
+                        } else {
+                            "value_template".to_string()
+                        },
                         Value::String(format!(
                             "{{{{ 'ON' if value_json[{}] else 'OFF' }}}}",
                             jinja_key(&field.source)
@@ -765,6 +841,27 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
                 }
             }
 
+            if field.discovery.domain == Domain::Light {
+                component.insert(
+                    "command_topic".to_string(),
+                    Value::String(
+                        field
+                            .discovery
+                            .command_topic
+                            .clone()
+                            .expect("validated MQTT light command_topic"),
+                    ),
+                );
+                component.insert("optimistic".to_string(), Value::Bool(false));
+                component.insert("qos".to_string(), Value::from(1));
+                component.insert("retain".to_string(), Value::Bool(false));
+            }
+            if let Some(default_entity_id) = &field.discovery.default_entity_id {
+                component.insert(
+                    "default_entity_id".to_string(),
+                    Value::String(default_entity_id.clone()),
+                );
+            }
             if let Some(unit) = &field.discovery.unit_of_measurement {
                 component.insert(
                     "unit_of_measurement".to_string(),
@@ -802,16 +899,49 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
             component.insert("origin".to_string(), origin_payload());
 
             let discovery_topic = format!(
-                "{}/{}/{}/config",
+                "{}/{}/{DEVICE_ID}_{component_id}/config",
                 options.discovery_prefix,
-                field.discovery.domain.as_str(),
-                format!("{DEVICE_ID}_{component_id}")
+                field.discovery.domain.as_str()
             );
             messages.push((discovery_topic, Value::Object(component)));
         }
     }
 
     messages
+}
+
+fn insert_availability(component: &mut Map<String, Value>, domain: Domain) {
+    if domain == Domain::Light {
+        component.insert(
+            "availability".to_string(),
+            json!([
+                {
+                    "topic": PLC_AVAILABILITY_TOPIC,
+                    "payload_available": "online",
+                    "payload_not_available": "offline"
+                },
+                {
+                    "topic": AVAILABILITY_TOPIC,
+                    "payload_available": "online",
+                    "payload_not_available": "offline"
+                }
+            ]),
+        );
+        component.insert("availability_mode".to_string(), json!("all"));
+    } else {
+        component.insert(
+            "availability_topic".to_string(),
+            Value::String(AVAILABILITY_TOPIC.to_string()),
+        );
+        component.insert(
+            "payload_available".to_string(),
+            Value::String("online".to_string()),
+        );
+        component.insert(
+            "payload_not_available".to_string(),
+            Value::String("offline".to_string()),
+        );
+    }
 }
 
 fn clock_offset_discovery_message(options: &AppOptions, spec: &TopicSpec) -> (String, Value) {
@@ -894,6 +1024,14 @@ fn component_id(source: &str) -> String {
         .collect()
 }
 
+fn field_component_id(field: &Field) -> String {
+    field
+        .discovery
+        .component_id
+        .clone()
+        .unwrap_or_else(|| component_id(&field.source))
+}
+
 fn jinja_key(source: &str) -> String {
     serde_json::to_string(source).expect("source string should serialize")
 }
@@ -967,6 +1105,18 @@ mod tests {
             .unwrap();
         assert_eq!(di.fields[4].source, "DI_Return_Float_LowLow");
         assert_eq!(di.fields[4].length, 1);
+
+        let digital_outputs = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::Do)
+            .unwrap();
+        assert_eq!(digital_outputs.fields[7].source, "DO_Relay_DC_4");
+        assert_eq!(digital_outputs.fields[7].discovery.domain, Domain::Light);
+        assert_eq!(
+            digital_outputs.fields[7].discovery.command_topic.as_deref(),
+            Some("plc/aquarium/command/cabinet_light")
+        );
 
         let inputs = layout
             .topics
@@ -1453,6 +1603,87 @@ mod tests {
             components["ato_timer_current"]["state_class"],
             json!("measurement")
         );
+    }
+
+    #[test]
+    fn discovery_includes_controllable_cabinet_light() {
+        let layout = test_layout();
+        let options = test_options(false);
+        let messages = discovery_messages(&options, &layout);
+        let components = discovery_components(&options, &layout);
+        let cabinet_light = &components["cabinet_light"];
+
+        assert!(messages
+            .iter()
+            .any(|(topic, _)| topic == "homeassistant/light/reef_plc_cabinet_light/config"));
+        assert_eq!(cabinet_light["unique_id"], json!("reef_plc_cabinet_light"));
+        assert_eq!(
+            cabinet_light["default_entity_id"],
+            json!("light.office_reef_cabinet")
+        );
+        assert_eq!(
+            cabinet_light["command_topic"],
+            json!("plc/aquarium/command/cabinet_light")
+        );
+        assert_eq!(cabinet_light["state_topic"], json!("reef/plc/state/do"));
+        assert_eq!(
+            cabinet_light["state_value_template"],
+            json!("{{ 'ON' if value_json[\"DO_Relay_DC_4\"] else 'OFF' }}")
+        );
+        assert_eq!(cabinet_light["payload_on"], json!("ON"));
+        assert_eq!(cabinet_light["payload_off"], json!("OFF"));
+        assert_eq!(cabinet_light["optimistic"], json!(false));
+        assert_eq!(cabinet_light["qos"], json!(1));
+        assert_eq!(cabinet_light["retain"], json!(false));
+        assert_eq!(cabinet_light["availability_mode"], json!("all"));
+        assert_eq!(
+            cabinet_light["availability"],
+            json!([
+                {
+                    "topic": "plc/aquarium/status",
+                    "payload_available": "online",
+                    "payload_not_available": "offline"
+                },
+                {
+                    "topic": "reef/plc/status",
+                    "payload_available": "online",
+                    "payload_not_available": "offline"
+                }
+            ])
+        );
+        assert!(cabinet_light.get("availability_topic").is_none());
+        assert!(cabinet_light.get("value_template").is_none());
+    }
+
+    #[test]
+    fn discovery_removes_legacy_cabinet_light_binary_sensor() {
+        let layout = test_layout();
+        let options = test_options(false);
+
+        assert_eq!(
+            removed_discovery_topics(&options, &layout),
+            vec!["homeassistant/binary_sensor/reef_plc_do_relay_dc_4/config"]
+        );
+    }
+
+    #[test]
+    fn layout_rejects_light_without_command_topic() {
+        let mut layout = test_layout();
+        let cabinet_light = layout
+            .topics
+            .iter_mut()
+            .find(|spec| spec.kind == TopicKind::Do)
+            .unwrap()
+            .fields
+            .get_mut(7)
+            .unwrap();
+        cabinet_light.discovery.command_topic = None;
+
+        let err = validate_layout(&layout).unwrap_err();
+
+        assert!(err
+            .to_string()
+            .contains("packed MQTT light DO_Relay_DC_4 requires command_topic"));
     }
 
     #[test]

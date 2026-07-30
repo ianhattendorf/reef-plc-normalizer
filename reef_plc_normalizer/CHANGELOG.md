@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Expose the eighth PLC digital output as a confirmed-state MQTT cabinet light
+  with direct PLC commands and combined PLC/normalizer availability.
+- Remove the former retained DC Relay 4 binary-sensor discovery record.
+
 ## 0.1.12
 
 - Allow 390 seconds before marking the five-minute PLC clock topic stale.
