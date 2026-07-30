@@ -28,8 +28,9 @@ publish interval; the other topics allow 60 seconds.
 
 The eighth digital-output field, `DO_Relay_DC_4`, is exposed as the controllable
 Home Assistant light `light.office_reef_cabinet`. Home Assistant sends
-non-retained `ON` and `OFF` commands directly to the PLC, while the normalized
-digital-output payload supplies the confirmed light state. Other relay outputs
+non-retained `ON` and `OFF` commands directly to the PLC and optimistically
+reflects the requested state immediately. The next normalized digital-output
+payload reconciles the light with the confirmed PLC state. Other relay outputs
 remain observe-only binary sensors.
 
 ## Configuration

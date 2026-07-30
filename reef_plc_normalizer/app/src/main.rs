@@ -852,7 +852,7 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
                             .expect("validated MQTT light command_topic"),
                     ),
                 );
-                component.insert("optimistic".to_string(), Value::Bool(false));
+                component.insert("optimistic".to_string(), Value::Bool(true));
                 component.insert("qos".to_string(), Value::from(1));
                 component.insert("retain".to_string(), Value::Bool(false));
             }
@@ -1632,7 +1632,7 @@ mod tests {
         );
         assert_eq!(cabinet_light["payload_on"], json!("ON"));
         assert_eq!(cabinet_light["payload_off"], json!("OFF"));
-        assert_eq!(cabinet_light["optimistic"], json!(false));
+        assert_eq!(cabinet_light["optimistic"], json!(true));
         assert_eq!(cabinet_light["qos"], json!(1));
         assert_eq!(cabinet_light["retain"], json!(false));
         assert_eq!(cabinet_light["availability_mode"], json!("all"));

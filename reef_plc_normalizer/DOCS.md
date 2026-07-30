@@ -39,11 +39,12 @@ The eighth field in `plc/aquarium/do`, `DO_Relay_DC_4`, is discovered as
   `plc/aquarium/command/cabinet_light` with QoS 1 and retain disabled.
 - The PLC applies the request in ladder logic and publishes the effective
   physical output in `plc/aquarium/do`.
-- The app publishes the normalized output in `reef/plc/state/do`; this confirmed
-  state drives the Home Assistant light.
+- Home Assistant optimistically reflects the requested state immediately.
+- The app publishes the normalized output in `reef/plc/state/do`; the next
+  confirmed PLC state reconciles the Home Assistant light.
 
-The light is non-optimistic and is available only when both retained status
-topics contain `online`:
+The light is optimistic and is available only when both retained status topics
+contain `online`:
 
 - `plc/aquarium/status`, owned by the PLC.
 - `reef/plc/status`, owned by this app.

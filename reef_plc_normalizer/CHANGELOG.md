@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Make the cabinet light optimistic so commands appear immediately while the
+  next PLC digital-output state reconciles the result.
+
 ## 0.1.13
 
 - Expose the eighth PLC digital output as a confirmed-state MQTT cabinet light
