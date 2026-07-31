@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add cabinet-light request and open-door on-time alarms to the packed alarm
+  topic.
+
 ## 0.1.14
 
 - Make the cabinet light optimistic so commands appear immediately while the

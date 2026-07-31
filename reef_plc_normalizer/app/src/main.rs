@@ -1133,13 +1133,15 @@ mod tests {
             .iter()
             .find(|spec| spec.kind == TopicKind::Alarms)
             .unwrap();
-        assert_eq!(alarms.fields.len(), 16);
+        assert_eq!(alarms.fields.len(), 18);
         assert_eq!(alarms.fields[0].source, "Alarm_Heater_Not_On");
         assert_eq!(alarms.fields[11].source, "Alarm_ATO_Runtime");
         assert_eq!(alarms.fields[12].source, "Alarm_Heater_1_On_Time");
         assert_eq!(alarms.fields[13].source, "Alarm_Ph");
         assert_eq!(alarms.fields[14].source, "Alarm_Return_Float_Low_Time");
         assert_eq!(alarms.fields[15].source, "Alarm_Not_Auto_Mode_Time");
+        assert_eq!(alarms.fields[16].source, "Alarm_Cab_Light_Req_On_Time");
+        assert_eq!(alarms.fields[17].source, "Alarm_Cab_Light_Door_On_Time");
 
         let ato = layout
             .topics
@@ -1189,7 +1191,7 @@ mod tests {
             .iter()
             .find(|spec| spec.kind == TopicKind::Alarms)
             .unwrap();
-        let state = parse_payload(spec, "1,0,0,1,0,1,0,0,1,0,1,0,1,0,1,0,").unwrap();
+        let state = parse_payload(spec, "1,0,0,1,0,1,0,0,1,0,1,0,1,0,1,0,1,0,").unwrap();
 
         assert_eq!(state["Alarm_Heater_Not_On"], json!(true));
         assert_eq!(state["Alarm_Heater_On"], json!(false));
@@ -1199,6 +1201,8 @@ mod tests {
         assert_eq!(state["Alarm_Ph"], json!(false));
         assert_eq!(state["Alarm_Return_Float_Low_Time"], json!(true));
         assert_eq!(state["Alarm_Not_Auto_Mode_Time"], json!(false));
+        assert_eq!(state["Alarm_Cab_Light_Req_On_Time"], json!(true));
+        assert_eq!(state["Alarm_Cab_Light_Door_On_Time"], json!(false));
     }
 
     #[test]
@@ -1441,6 +1445,33 @@ mod tests {
                 components[component_id]["entity_category"],
                 json!("diagnostic")
             );
+        }
+    }
+
+    #[test]
+    fn discovery_includes_cabinet_light_on_time_alarms() {
+        let layout = test_layout();
+        let options = test_options(false);
+        let components = discovery_components(&options, &layout);
+
+        for (component_id, source) in [
+            ("alarm_cab_light_req_on_time", "Alarm_Cab_Light_Req_On_Time"),
+            (
+                "alarm_cab_light_door_on_time",
+                "Alarm_Cab_Light_Door_On_Time",
+            ),
+        ] {
+            assert_eq!(
+                components[component_id]["state_topic"],
+                json!("reef/plc/state/alarms")
+            );
+            assert_eq!(
+                components[component_id]["value_template"],
+                json!(format!(
+                    "{{{{ 'ON' if value_json[\"{source}\"] else 'OFF' }}}}"
+                ))
+            );
+            assert_eq!(components[component_id]["device_class"], json!("problem"));
         }
     }
 
