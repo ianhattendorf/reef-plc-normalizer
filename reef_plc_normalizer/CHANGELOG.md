@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.16
+
 - Require both the PLC and normalizer MQTT status topics for every discovered
   data and topic-health entity.
 - Apply per-source freshness expiry to all discovered sensors and binary
