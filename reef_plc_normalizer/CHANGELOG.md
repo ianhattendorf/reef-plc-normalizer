@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Require both the PLC and normalizer MQTT status topics for every discovered
+  data and topic-health entity.
+- Apply per-source freshness expiry to all discovered sensors and binary
+  sensors, using 60 seconds for telemetry and 390 seconds for the clock.
+- Add a diagnostic PLC MQTT connectivity entity backed directly by the PLC's
+  retained status and last-will topic.
+
 ## 0.1.15
 
 - Add cabinet-light request and open-door on-time alarms to the packed alarm

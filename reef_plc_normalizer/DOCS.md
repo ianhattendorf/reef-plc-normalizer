@@ -53,6 +53,11 @@ The PLC status topic should use retained `online` state and a retained `offline`
 last will. The app does not merge or republish PLC availability under its own
 status topic.
 
+The app also discovers `binary_sensor.reef_plc_mqtt_connected` directly from
+the PLC status topic. It is available whenever the normalizer is connected, and
+its `on`/`off` state reports the PLC MQTT client's retained online state or
+retained offline last will.
+
 On startup and reconnect, the app removes the former retained
 `homeassistant/binary_sensor/reef_plc_do_relay_dc_4/config` discovery record
 before publishing the cabinet-light discovery record.
@@ -62,16 +67,19 @@ before publishing the cabinet-light discovery record.
 The app publishes diagnostic MQTT binary sensor discovery for each normalized
 state topic: DI, DO, AI, inputs, alarms, ATO, time sync, and clock. These
 entities use the normalized state topic as their `state_topic` and always
-render the latest payload as `ON`. Most set `expire_after: 60`; the clock uses
-`expire_after: 390` to allow a five-minute publish interval plus 90 seconds of
-delivery and reconnect tolerance. If one PLC topic stops producing fresh
-payloads while the app stays online, only that topic-health entity becomes
-unavailable.
+render the latest payload as `ON`. Every sensor, binary sensor, clock-offset
+sensor, and topic-health entity sourced from those topics uses the same expiry:
+most set `expire_after: 60`; the clock uses `expire_after: 390` to allow a
+five-minute publish interval plus 90 seconds of delivery and reconnect
+tolerance. If one PLC topic stops producing fresh payloads while both MQTT
+clients stay online, only entities sourced from that topic become unavailable.
 
-The topic-health entities also use `reef/plc/status` as their availability
-topic. The availability topic tracks the normalizer app MQTT client through a
-retained online payload and retained LWT offline payload; `expire_after` tracks
-per-topic freshness.
+Data and topic-health entities require both retained availability topics in
+`all` mode: `plc/aquarium/status` for the PLC MQTT client and `reef/plc/status`
+for the normalizer. `expire_after` independently tracks per-topic freshness.
+This makes STOP mode uniform: the PLC LWT makes data unavailable immediately,
+while a failure of only one publisher appears as that topic's expiry after its
+grace period.
 
 ## MQTT Recovery
 

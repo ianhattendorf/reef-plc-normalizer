@@ -785,7 +785,7 @@ fn removed_discovery_topics(options: &AppOptions, layout: &Layout) -> Vec<String
 }
 
 fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Value)> {
-    let mut messages = Vec::new();
+    let mut messages = vec![plc_mqtt_connected_discovery_message(options)];
 
     for spec in &layout.topics {
         messages.push(topic_health_discovery_message(options, spec));
@@ -812,7 +812,13 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
                 "state_topic".to_string(),
                 Value::String(spec.state_topic.to_string()),
             );
-            insert_availability(&mut component, field.discovery.domain);
+            insert_combined_availability(&mut component);
+            if field.discovery.domain != Domain::Light {
+                component.insert(
+                    "expire_after".to_string(),
+                    Value::from(spec.kind.topic_health_expire_after_seconds()),
+                );
+            }
 
             match field.value_type {
                 ValueType::Bool => {
@@ -910,43 +916,52 @@ fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(String, Val
     messages
 }
 
-fn insert_availability(component: &mut Map<String, Value>, domain: Domain) {
-    if domain == Domain::Light {
-        component.insert(
-            "availability".to_string(),
-            json!([
-                {
-                    "topic": PLC_AVAILABILITY_TOPIC,
-                    "payload_available": "online",
-                    "payload_not_available": "offline"
-                },
-                {
-                    "topic": AVAILABILITY_TOPIC,
-                    "payload_available": "online",
-                    "payload_not_available": "offline"
-                }
-            ]),
-        );
-        component.insert("availability_mode".to_string(), json!("all"));
-    } else {
-        component.insert(
-            "availability_topic".to_string(),
-            Value::String(AVAILABILITY_TOPIC.to_string()),
-        );
-        component.insert(
-            "payload_available".to_string(),
-            Value::String("online".to_string()),
-        );
-        component.insert(
-            "payload_not_available".to_string(),
-            Value::String("offline".to_string()),
-        );
-    }
+fn insert_combined_availability(component: &mut Map<String, Value>) {
+    component.insert(
+        "availability".to_string(),
+        json!([
+            {
+                "topic": PLC_AVAILABILITY_TOPIC,
+                "payload_available": "online",
+                "payload_not_available": "offline"
+            },
+            {
+                "topic": AVAILABILITY_TOPIC,
+                "payload_available": "online",
+                "payload_not_available": "offline"
+            }
+        ]),
+    );
+    component.insert("availability_mode".to_string(), json!("all"));
+}
+
+fn plc_mqtt_connected_discovery_message(options: &AppOptions) -> (String, Value) {
+    let component_id = "mqtt_connected";
+    let payload = json!({
+        "unique_id": format!("{DEVICE_ID}_{component_id}"),
+        "name": "MQTT Connected",
+        "state_topic": PLC_AVAILABILITY_TOPIC,
+        "payload_on": "online",
+        "payload_off": "offline",
+        "availability_topic": AVAILABILITY_TOPIC,
+        "payload_available": "online",
+        "payload_not_available": "offline",
+        "device_class": "connectivity",
+        "entity_category": "diagnostic",
+        "device": device_payload(),
+        "origin": origin_payload(),
+    });
+    let discovery_topic = format!(
+        "{}/binary_sensor/{DEVICE_ID}_{component_id}/config",
+        options.discovery_prefix
+    );
+
+    (discovery_topic, payload)
 }
 
 fn clock_offset_discovery_message(options: &AppOptions, spec: &TopicSpec) -> (String, Value) {
     let component_id = "clock_offset_seconds";
-    let payload = json!({
+    let mut payload = json!({
         "unique_id": format!("{DEVICE_ID}_{component_id}"),
         "name": "Clock Offset",
         "state_topic": spec.state_topic.as_str(),
@@ -954,13 +969,12 @@ fn clock_offset_discovery_message(options: &AppOptions, spec: &TopicSpec) -> (St
         "unit_of_measurement": "s",
         "state_class": "measurement",
         "suggested_display_precision": 1,
-        "availability_topic": AVAILABILITY_TOPIC,
-        "payload_available": "online",
-        "payload_not_available": "offline",
+        "expire_after": spec.kind.topic_health_expire_after_seconds(),
         "entity_category": "diagnostic",
         "device": device_payload(),
         "origin": origin_payload(),
     });
+    insert_combined_availability(payload.as_object_mut().unwrap());
     let discovery_topic = format!(
         "{}/sensor/{DEVICE_ID}_{component_id}/config",
         options.discovery_prefix
@@ -971,21 +985,19 @@ fn clock_offset_discovery_message(options: &AppOptions, spec: &TopicSpec) -> (St
 
 fn topic_health_discovery_message(options: &AppOptions, spec: &TopicSpec) -> (String, Value) {
     let component_id = format!("{}_topic_online", spec.kind.as_str());
-    let payload = json!({
+    let mut payload = json!({
         "unique_id": format!("{DEVICE_ID}_{component_id}"),
         "name": format!("{} Topic Online", spec.kind.display_name()),
         "state_topic": spec.state_topic.as_str(),
         "value_template": "ON",
         "payload_on": "ON",
         "expire_after": spec.kind.topic_health_expire_after_seconds(),
-        "availability_topic": AVAILABILITY_TOPIC,
-        "payload_available": "online",
-        "payload_not_available": "offline",
         "device_class": "connectivity",
         "entity_category": "diagnostic",
         "device": device_payload(),
         "origin": origin_payload(),
     });
+    insert_combined_availability(payload.as_object_mut().unwrap());
     let discovery_topic = format!(
         "{}/binary_sensor/{DEVICE_ID}_{component_id}/config",
         options.discovery_prefix
@@ -1533,6 +1545,35 @@ mod tests {
             components["clock_offset_seconds"]["entity_category"],
             json!("diagnostic")
         );
+        assert_eq!(
+            components["clock_offset_seconds"]["expire_after"],
+            json!(390)
+        );
+        assert_eq!(
+            components["clock_offset_seconds"]["availability_mode"],
+            json!("all")
+        );
+    }
+
+    #[test]
+    fn discovery_includes_plc_mqtt_connectivity() {
+        let layout = test_layout();
+        let options = test_options(false);
+        let messages = discovery_messages(&options, &layout);
+        let components = discovery_components(&options, &layout);
+
+        assert!(messages.iter().any(
+            |(topic, _)| topic == "homeassistant/binary_sensor/reef_plc_mqtt_connected/config"
+        ));
+        let connected = &components["mqtt_connected"];
+        assert_eq!(connected["state_topic"], json!("plc/aquarium/status"));
+        assert_eq!(connected["payload_on"], json!("online"));
+        assert_eq!(connected["payload_off"], json!("offline"));
+        assert_eq!(connected["availability_topic"], json!("reef/plc/status"));
+        assert_eq!(connected["device_class"], json!("connectivity"));
+        assert_eq!(connected["entity_category"], json!("diagnostic"));
+        assert!(connected.get("expire_after").is_none());
+        assert!(connected.get("availability").is_none());
     }
 
     #[test]
@@ -1570,10 +1611,12 @@ mod tests {
                 components[component_id]["expire_after"],
                 json!(expected_expire_after)
             );
+            assert_eq!(components[component_id]["availability_mode"], json!("all"));
             assert_eq!(
-                components[component_id]["availability_topic"],
-                json!("reef/plc/status")
+                components[component_id]["availability"],
+                combined_availability()
             );
+            assert!(components[component_id].get("availability_topic").is_none());
             assert_eq!(
                 components[component_id]["device_class"],
                 json!("connectivity")
@@ -1745,6 +1788,14 @@ mod tests {
             components["di_water_leak_1"]["value_template"],
             json!("{{ 'ON' if value_json[\"DI_Water_Leak_1\"] else 'OFF' }}")
         );
+        assert_eq!(components["total_amps"]["expire_after"], json!(60));
+        assert_eq!(components["di_water_leak_1"]["expire_after"], json!(60));
+        assert_eq!(components["total_amps"]["availability_mode"], json!("all"));
+        assert_eq!(
+            components["total_amps"]["availability"],
+            combined_availability()
+        );
+        assert!(components["total_amps"].get("availability_topic").is_none());
     }
 
     #[test]
@@ -1838,5 +1889,20 @@ mod tests {
             publish_diagnostic_ai,
             log_level: "info".to_string(),
         }
+    }
+
+    fn combined_availability() -> Value {
+        json!([
+            {
+                "topic": "plc/aquarium/status",
+                "payload_available": "online",
+                "payload_not_available": "offline"
+            },
+            {
+                "topic": "reef/plc/status",
+                "payload_available": "online",
+                "payload_not_available": "offline"
+            }
+        ])
     }
 }
