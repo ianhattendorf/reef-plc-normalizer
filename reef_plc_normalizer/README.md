@@ -3,9 +3,10 @@
 Home Assistant App that normalizes AutomationDirect P1-550 packed MQTT payloads
 and exposes the PLC clock for reef tank monitoring.
 
-The app subscribes to the raw PLC topics, validates packed CSV and ISO 8601
-clock payloads, publishes normalized JSON state topics, and publishes retained
-Home Assistant MQTT device discovery. The normalized clock state includes both
+The app subscribes to the raw PLC topics, validates its embedded field layout
+against a sanitized PLC-generated MQTT contract, validates packed CSV and ISO
+8601 clock payloads, publishes normalized JSON state topics, and publishes
+retained Home Assistant MQTT device discovery. The normalized clock state includes both
 the PLC timestamp and a signed receipt-time offset in seconds; positive means
 the PLC clock is behind the normalizer host and negative means it is ahead.
 
@@ -43,6 +44,17 @@ per-field Home Assistant discovery metadata are defined in
 `app/packed_mqtt_layout.yaml` and embedded into the app at build time, so a PLC
 pack-string order or entity metadata change should be shipped as a new app
 version.
+
+At startup, the app also validates that its vendored contract agrees with the
+embedded layout and expected MQTT semantics: PLC status/LWT is retained at QoS
+1, telemetry publishers are non-retained, command subscriptions use QoS 1, and
+the raw topic field order, type, and width match. Contract drift stops startup
+with a precise error instead of silently mislabeling PLC values.
+
+The PLC's unconditional telemetry publishers are the freshness signal; a
+separate heartbeat topic is intentionally unnecessary. The retained PLC status
+topic provides immediate client availability, while each data topic's
+`expire_after` detects a partial publisher failure.
 
 ## Installation Notes
 

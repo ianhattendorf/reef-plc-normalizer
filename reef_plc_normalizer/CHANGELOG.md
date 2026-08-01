@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Validate the embedded field layout against a sanitized MQTT contract
+  generated from the PLC source, including topics, QoS, retention, timing,
+  commands, and packed field metadata.
+- Split runtime responsibilities into focused configuration, contract, layout,
+  MQTT, normalization, availability, and discovery modules.
+- Add a contract synchronization helper and enforce formatting, Clippy, tests,
+  release metadata, and the container build in CI.
+- Record authoritative PLC source tags separately where stable Home Assistant
+  keys intentionally differ.
+
 ## 0.1.16
 
 - Require both the PLC and normalizer MQTT status topics for every discovered

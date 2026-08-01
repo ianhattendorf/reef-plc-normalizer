@@ -1,0 +1,713 @@
+{
+  "generated_by": "aquarium-controller-plc-mqtt-contract",
+  "mqtt": {
+    "last_will": {
+      "enabled": true,
+      "payload": "offline",
+      "payload_tag": "Mqtt_Publish_Payload_LWT",
+      "qos": 1,
+      "retain": true,
+      "topic": "plc/aquarium/status",
+      "topic_tag": "Mqtt_LWT_Topic"
+    },
+    "publishers": [
+      {
+        "interval_seconds": 10,
+        "mappings": [
+          {
+            "payload_tag": "Mqtt_Publish_Payload_DI",
+            "retain": false,
+            "topic": "plc/aquarium/di",
+            "topic_tag": "Mqtt_Publish_Topic_DI"
+          },
+          {
+            "payload_tag": "Mqtt_Publish_Payload_DO",
+            "retain": false,
+            "topic": "plc/aquarium/do",
+            "topic_tag": "Mqtt_Publish_Topic_DO"
+          },
+          {
+            "payload_tag": "Mqtt_Publish_Payload_AI",
+            "retain": false,
+            "topic": "plc/aquarium/ai",
+            "topic_tag": "Mqtt_Publish_Topic_AI"
+          },
+          {
+            "payload_tag": "Mqtt_Publish_Payload_Inputs",
+            "retain": false,
+            "topic": "plc/aquarium/inputs",
+            "topic_tag": "Mqtt_Publish_Topic_Inputs"
+          },
+          {
+            "payload_tag": "Mqtt_Publish_Payload_ATO",
+            "retain": false,
+            "topic": "plc/aquarium/ato",
+            "topic_tag": "Mqtt_Publish_Topic_ATO"
+          },
+          {
+            "payload_tag": "Mqtt_Publish_Payload_Alarms",
+            "retain": false,
+            "topic": "plc/aquarium/alarms",
+            "topic_tag": "Mqtt_Publish_Topic_Alarms"
+          },
+          {
+            "payload_tag": "Mqtt_Publish_Payload_Time_Sync",
+            "retain": false,
+            "topic": "plc/aquarium/time_sync",
+            "topic_tag": "Mqtt_Publish_Topic_Time_Sync"
+          },
+          {
+            "payload_constant": "online",
+            "payload_tag": "",
+            "retain": true,
+            "topic": "plc/aquarium/status",
+            "topic_tag": "Mqtt_LWT_Topic"
+          }
+        ],
+        "name": "Publisher 1 Setup",
+        "qos": 0
+      },
+      {
+        "interval_seconds": 300,
+        "mappings": [
+          {
+            "payload_tag": "PLC_Current_Time_ISO8601",
+            "retain": false,
+            "topic": "plc/aquarium/clock",
+            "topic_tag": "Mqtt_Publish_Topic_Clock"
+          }
+        ],
+        "name": "Publisher 2 Setup",
+        "qos": 1
+      }
+    ],
+    "subscribers": [
+      {
+        "mappings": [
+          {
+            "payload_tag": "MQTT_Subscribe_Payload_Cab_Light",
+            "receive_tag": "MQTT_Subscribe_Rcvd_Cab_Light",
+            "topic": "plc/aquarium/command/cabinet_light",
+            "topic_tag": "MQTT_Subscribe_Topic_Cab_Light"
+          }
+        ],
+        "name": "Subscriber 1 Setup",
+        "qos": 1
+      }
+    ]
+  },
+  "packed_payloads": [
+    {
+      "fields": [
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_AC_Total",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_AC_Total:1",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_AC_Heater_1",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_AC_Heater_1:1",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_AC_ATO",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_AC_ATO:1",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AIS32-0.1.3.4",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AIS32-0.1.3.4:1",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AIS32-0.1.3.5",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AIS32-0.1.3.5:1",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_DC_Return_Pump",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_DC_Return_Pump:1",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_DC_Skimmer",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_DC_Skimmer:1",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_DC_Wavemakers",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 41,
+          "source": "AI_CT_DC_Wavemakers:1",
+          "wire_type": "int"
+        }
+      ],
+      "payload_tag": "Mqtt_Publish_Payload_AI",
+      "topic": "plc/aquarium/ai"
+    },
+    {
+      "fields": [
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Heater_Not_On",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Heater_On",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Leak",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Return_Pump_Not_Running",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Return_Pump_Running",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Skimmer_Not_Running",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Skimmer_Running",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Temp_High",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Temp_Low",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Return_Water_High",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Return_Float_Mismatch",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_ATO_Runtime",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Heater_1_On_Time",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Ph",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Return_Float_Low_Time",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Not_Auto_Mode_Time",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Cab_Light_Req_On_Time",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Cab_Light_Door_On_Time",
+          "wire_type": "bool"
+        }
+      ],
+      "payload_tag": "Mqtt_Publish_Payload_Alarms",
+      "topic": "plc/aquarium/alarms"
+    },
+    {
+      "fields": [
+        {
+          "length": 4,
+          "plc_data_type": 43,
+          "source": "ATO_Timer.Current",
+          "wire_type": "int"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "ATO_Timer.Done",
+          "wire_type": "bool"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 43,
+          "source": "ATO_Timer_24h.Current",
+          "wire_type": "int"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 43,
+          "source": "ATO_Timer_Acc.Current",
+          "wire_type": "int"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "ATO_Timer_Acc.Equal",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "ATO_Timer_Acc.Greater",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "ATO_Timer_Acc.Less",
+          "wire_type": "bool"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 63,
+          "source": "ATO_Current_mL",
+          "wire_type": "float"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 63,
+          "source": "ATO_Acc_mL",
+          "wire_type": "float"
+        }
+      ],
+      "payload_tag": "Mqtt_Publish_Payload_ATO",
+      "topic": "plc/aquarium/ato"
+    },
+    {
+      "fields": [
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_Water_Leak_1",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_Water_Leak_2",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_Return_Float_High",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_Return_Float_Low",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_Return_Float_LowLow",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_Display_Float_High",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_ATO_Float_Low",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_ATO_Float_LowLow",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI-0.1.1.9",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI-0.1.1.10",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI-0.1.1.11",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI-0.1.1.12",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_UPS_Ready",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_UPS_Bat_Mode",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_UPS_Alarm",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 11,
+          "source": "DI_PS_Main_24v_DC_OK",
+          "wire_type": "bool"
+        }
+      ],
+      "payload_tag": "Mqtt_Publish_Payload_DI",
+      "topic": "plc/aquarium/di"
+    },
+    {
+      "fields": [
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO_Relay_AC_Heater_1",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO_Relay_AC_Heater_2",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO_Relay_AC_ATO",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO_Relay_AC_4",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO_Relay_DC_Return_Pump",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO_Relay_DC_Skimmer",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO_Relay_DC_Wavemakers",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO_Relay_DC_Cabinet_Light",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO_Relay_DC_Refugium_Light",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO_Relay_DC_6",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO-0.1.2.11",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO-0.1.2.12",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO-0.1.2.13",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO-0.1.2.14",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 12,
+          "source": "DO-0.1.2.15",
+          "wire_type": "bool"
+        }
+      ],
+      "payload_tag": "Mqtt_Publish_Payload_DO",
+      "topic": "plc/aquarium/do"
+    },
+    {
+      "fields": [
+        {
+          "length": 5,
+          "plc_data_type": 63,
+          "source": "Temp_Sump_1",
+          "wire_type": "float"
+        },
+        {
+          "length": 5,
+          "plc_data_type": 63,
+          "source": "Temp_Sump_2",
+          "wire_type": "float"
+        },
+        {
+          "length": 5,
+          "plc_data_type": 63,
+          "source": "Temp_Sump_Max",
+          "wire_type": "float"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 63,
+          "source": "Total_Amps",
+          "wire_type": "float"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 63,
+          "source": "Heater_1_Amps",
+          "wire_type": "float"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 63,
+          "source": "Heater_2_Amps",
+          "wire_type": "float"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 63,
+          "source": "Heater_Amps",
+          "wire_type": "float"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 63,
+          "source": "Return_Pump_Amps",
+          "wire_type": "float"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 63,
+          "source": "Skimmer_Amps",
+          "wire_type": "float"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 63,
+          "source": "Wavemakers_Amps",
+          "wire_type": "float"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Water_Leak",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Return_Float_LowLow",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Return_Pump_Running",
+          "wire_type": "bool"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 43,
+          "source": "ATO_Amps",
+          "wire_type": "int"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "ATO_Running",
+          "wire_type": "bool"
+        },
+        {
+          "length": 4,
+          "plc_data_type": 63,
+          "source": "Ph_Transmitter",
+          "wire_type": "float"
+        }
+      ],
+      "payload_tag": "Mqtt_Publish_Payload_Inputs",
+      "topic": "plc/aquarium/inputs"
+    },
+    {
+      "fields": [
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_Time_Sync",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 141,
+          "source": "Battery Low Bit",
+          "wire_type": "bool"
+        },
+        {
+          "length": 5,
+          "plc_data_type": 33,
+          "source": "Time_Sync_Error_Count.Current",
+          "wire_type": "int"
+        },
+        {
+          "length": 5,
+          "plc_data_type": 33,
+          "source": "Time_Sync_Success_Count.Current",
+          "wire_type": "int"
+        }
+      ],
+      "payload_tag": "Mqtt_Publish_Payload_Time_Sync",
+      "topic": "plc/aquarium/time_sync"
+    }
+  ],
+  "schema_version": 1,
+  "source": {
+    "extractor_version": "1.1.0",
+    "file": "aquarium_controller.adpro",
+    "sha256": "d7847d47e5ea018ce00b89cd7f8ad0755e3c9a883842685ce21072b99d1198ab"
+  }
+}

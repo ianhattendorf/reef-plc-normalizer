@@ -38,11 +38,17 @@ jobs:
       - name: Check formatting
         run: cargo fmt --manifest-path reef_plc_normalizer/app/Cargo.toml -- --check
 
+      - name: Run Clippy
+        run: cargo clippy --manifest-path reef_plc_normalizer/app/Cargo.toml --locked -- -D warnings
+
       - name: Check release metadata
         run: scripts/check-release.sh
 
       - name: Run tests
         run: cargo test --manifest-path reef_plc_normalizer/app/Cargo.toml --locked
+
+      - name: Build image
+        run: docker build reef_plc_normalizer
 
   image:
     runs-on: ubuntu-latest

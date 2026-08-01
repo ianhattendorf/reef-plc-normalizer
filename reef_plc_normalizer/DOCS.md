@@ -30,6 +30,12 @@ trailing comma, and rejects payloads with the wrong number of fields or invalid
 values. The PLC clock must use `YYYY-MM-DDTHH:MM:SS±HH:MM` ISO 8601 format.
 Rejected payloads are logged and do not update Home Assistant state.
 
+Before connecting to MQTT, the app validates
+`app/contracts/plc_mqtt.json`, generated from the private PLC source, against
+`app/packed_mqtt_layout.yaml`. It checks topic names, timing, QoS, retention,
+command subscriptions, and packed field order, widths, and compatible types.
+This snapshot intentionally excludes broker hostnames and credentials.
+
 ## Cabinet Light Control
 
 The eighth field in `plc/aquarium/do`, `DO_Relay_DC_4`, is discovered as
@@ -74,6 +80,11 @@ five-minute publish interval plus 90 seconds of delivery and reconnect
 tolerance. If one PLC topic stops producing fresh payloads while both MQTT
 clients stay online, only entities sourced from that topic become unavailable.
 
+No separate heartbeat topic is used. Since the PLC publishes every telemetry
+topic unconditionally, those publications are a more specific freshness signal
+than one shared heartbeat. The retained PLC LWT/status reports whether the MQTT
+client is connected; per-topic expiry reports whether each publisher is fresh.
+
 Data and topic-health entities require both retained availability topics in
 `all` mode: `plc/aquarium/status` for the PLC MQTT client and `reef/plc/status`
 for the normalizer. `expire_after` independently tracks per-topic freshness.
@@ -95,10 +106,10 @@ received.
 ## Packed MQTT Layout
 
 The packed MQTT topic layout and per-field Home Assistant discovery metadata are
-defined in `app/packed_mqtt_layout.yaml`. Each field records the PLC source tag,
-packed character length, value type, and Home Assistant discovery metadata. The
-PLC source tag is also used as the normalized JSON state key. The file is
-embedded at build time and is not exposed as a Home Assistant option.
+defined in `app/packed_mqtt_layout.yaml`. Each field records the stable
+normalized key, optional authoritative `plc_source` tag, packed character
+length, value type, and Home Assistant discovery metadata. The file is embedded
+at build time and is not exposed as a Home Assistant option.
 
 Boolean fields can set `active_when: false` for normally-closed inputs where raw
 `0` means active. Individual entities can set

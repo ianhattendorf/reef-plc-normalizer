@@ -20,3 +20,13 @@ promotes the unreleased changelog notes into the new version, runs the release
 checks and tests, commits, creates the matching `vX.Y.Z` tag, and pushes both
 `main` and the tag. The pushed tag triggers the GitHub Actions image publish
 workflow.
+
+The sanitized PLC MQTT contract is vendored at
+`reef_plc_normalizer/app/contracts/plc_mqtt.json`. After changing PLC source,
+regenerate the contract in the private PLC repository and run:
+
+```sh
+scripts/sync-plc-contract.sh --check ../aquarium-controller-plc
+```
+
+Use the same command without `--check` to refresh the snapshot intentionally.

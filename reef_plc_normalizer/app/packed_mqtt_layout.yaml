@@ -188,6 +188,7 @@ topics:
           name: Wavemakers Relay
           device_class: power
       - source: DO_Relay_DC_4
+        plc_source: DO_Relay_DC_Cabinet_Light
         length: 1
         value_type: bool
         discovery:
@@ -769,6 +770,7 @@ topics:
           device_class: problem
           entity_category: diagnostic
       - source: Time_Sync_Error_Count.Counter
+        plc_source: Time_Sync_Error_Count.Current
         length: 5
         value_type: int
         discovery:
@@ -777,6 +779,7 @@ topics:
           state_class: total_increasing
           entity_category: diagnostic
       - source: Time_Sync_Success_Count.Counter
+        plc_source: Time_Sync_Success_Count.Current
         length: 5
         value_type: int
         discovery:

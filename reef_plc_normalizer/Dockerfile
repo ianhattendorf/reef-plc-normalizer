@@ -4,6 +4,7 @@ WORKDIR /usr/src/reef-plc-normalizer
 RUN apk add --no-cache musl-dev
 COPY app/Cargo.toml app/Cargo.lock ./
 COPY app/packed_mqtt_layout.yaml ./
+COPY app/contracts ./contracts
 COPY app/src ./src
 RUN cargo build --release --locked
 
