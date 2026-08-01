@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Update the container builder and CI to Rust 1.97.1 and declare Rust 1.97 as
+  the minimum supported toolchain.
+
 ## 0.1.17
 
 - Validate the embedded field layout against a sanitized MQTT contract

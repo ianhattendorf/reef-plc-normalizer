@@ -1,4 +1,4 @@
-FROM rust:1.85-alpine AS builder
+FROM rust:1.97.1-alpine3.24 AS builder
 
 WORKDIR /usr/src/reef-plc-normalizer
 RUN apk add --no-cache musl-dev
