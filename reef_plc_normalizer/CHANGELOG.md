@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.17
+
 - Validate the embedded field layout against a sanitized MQTT contract
   generated from the PLC source, including topics, QoS, retention, timing,
   commands, and packed field metadata.
