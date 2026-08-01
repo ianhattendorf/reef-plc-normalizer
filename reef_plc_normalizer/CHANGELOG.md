@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Install the pinned Rust formatting and lint components explicitly in CI.
+
 ## 0.1.18
 
 - Update the container builder and CI to Rust 1.97.1 and declare Rust 1.97 as
