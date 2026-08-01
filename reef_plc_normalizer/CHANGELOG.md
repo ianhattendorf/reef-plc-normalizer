@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.19
+
 - Install the pinned Rust formatting and lint components explicitly in CI.
 
 ## 0.1.18
