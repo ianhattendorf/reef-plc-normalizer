@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.20
+
 - Add normalized Home Assistant problem entities for the five GMP40 controller
   alarms published by the PLC.
 - Refresh the PLC MQTT contract for the GMP40 command subscription and expanded
