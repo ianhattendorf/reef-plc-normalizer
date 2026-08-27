@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add normalized Home Assistant problem entities for the five GMP40 controller
+  alarms published by the PLC.
+- Refresh the PLC MQTT contract for the GMP40 command subscription and expanded
+  alarm payload.
+
 ## 0.1.19
 
 - Install the pinned Rust formatting and lint components explicitly in CI.

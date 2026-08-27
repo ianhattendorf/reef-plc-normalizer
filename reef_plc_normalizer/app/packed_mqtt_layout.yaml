@@ -669,6 +669,41 @@ topics:
           domain: binary_sensor
           name: Cabinet Light Door On Time Alarm
           device_class: problem
+      - source: Alarm_GMP40_1_Any
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: GMP40 1 Any Alarm
+          device_class: problem
+      - source: Alarm_GMP40_1_Command_Failed
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: GMP40 1 Command Failed Alarm
+          device_class: problem
+      - source: Alarm_GMP40_1_Device_Fault
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: GMP40 1 Device Fault Alarm
+          device_class: problem
+      - source: Alarm_GMP40_1_Protocol_Fault
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: GMP40 1 Protocol Fault Alarm
+          device_class: problem
+      - source: Alarm_GMP40_1_Unavailable
+        length: 1
+        value_type: bool
+        discovery:
+          domain: binary_sensor
+          name: GMP40 1 Unavailable Alarm
+          device_class: problem
 
   - kind: ato
     source_topic: plc/aquarium/ato

@@ -124,7 +124,7 @@ mod tests {
             .iter()
             .find(|spec| spec.kind == TopicKind::Alarms)
             .unwrap();
-        assert_eq!(alarms.fields.len(), 18);
+        assert_eq!(alarms.fields.len(), 23);
         assert_eq!(alarms.fields[0].source, "Alarm_Heater_Not_On");
         assert_eq!(alarms.fields[11].source, "Alarm_ATO_Runtime");
         assert_eq!(alarms.fields[12].source, "Alarm_Heater_1_On_Time");
@@ -133,6 +133,11 @@ mod tests {
         assert_eq!(alarms.fields[15].source, "Alarm_Not_Auto_Mode_Time");
         assert_eq!(alarms.fields[16].source, "Alarm_Cab_Light_Req_On_Time");
         assert_eq!(alarms.fields[17].source, "Alarm_Cab_Light_Door_On_Time");
+        assert_eq!(alarms.fields[18].source, "Alarm_GMP40_1_Any");
+        assert_eq!(alarms.fields[19].source, "Alarm_GMP40_1_Command_Failed");
+        assert_eq!(alarms.fields[20].source, "Alarm_GMP40_1_Device_Fault");
+        assert_eq!(alarms.fields[21].source, "Alarm_GMP40_1_Protocol_Fault");
+        assert_eq!(alarms.fields[22].source, "Alarm_GMP40_1_Unavailable");
 
         let ato = layout
             .topics
@@ -182,7 +187,7 @@ mod tests {
             .iter()
             .find(|spec| spec.kind == TopicKind::Alarms)
             .unwrap();
-        let state = parse_payload(spec, "1,0,0,1,0,1,0,0,1,0,1,0,1,0,1,0,1,0,").unwrap();
+        let state = parse_payload(spec, "1,0,0,1,0,1,0,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,").unwrap();
 
         assert_eq!(state["Alarm_Heater_Not_On"], json!(true));
         assert_eq!(state["Alarm_Heater_On"], json!(false));
@@ -194,6 +199,11 @@ mod tests {
         assert_eq!(state["Alarm_Not_Auto_Mode_Time"], json!(false));
         assert_eq!(state["Alarm_Cab_Light_Req_On_Time"], json!(true));
         assert_eq!(state["Alarm_Cab_Light_Door_On_Time"], json!(false));
+        assert_eq!(state["Alarm_GMP40_1_Any"], json!(true));
+        assert_eq!(state["Alarm_GMP40_1_Command_Failed"], json!(false));
+        assert_eq!(state["Alarm_GMP40_1_Device_Fault"], json!(true));
+        assert_eq!(state["Alarm_GMP40_1_Protocol_Fault"], json!(false));
+        assert_eq!(state["Alarm_GMP40_1_Unavailable"], json!(true));
     }
 
     #[test]
@@ -451,6 +461,39 @@ mod tests {
                 "alarm_cab_light_door_on_time",
                 "Alarm_Cab_Light_Door_On_Time",
             ),
+        ] {
+            assert_eq!(
+                components[component_id]["state_topic"],
+                json!("reef/plc/state/alarms")
+            );
+            assert_eq!(
+                components[component_id]["value_template"],
+                json!(format!(
+                    "{{{{ 'ON' if value_json[\"{source}\"] else 'OFF' }}}}"
+                ))
+            );
+            assert_eq!(components[component_id]["device_class"], json!("problem"));
+        }
+    }
+
+    #[test]
+    fn discovery_includes_gmp40_alarms() {
+        let layout = test_layout();
+        let options = test_options(false);
+        let components = discovery_components(&options, &layout);
+
+        for (component_id, source) in [
+            ("alarm_gmp40_1_any", "Alarm_GMP40_1_Any"),
+            (
+                "alarm_gmp40_1_command_failed",
+                "Alarm_GMP40_1_Command_Failed",
+            ),
+            ("alarm_gmp40_1_device_fault", "Alarm_GMP40_1_Device_Fault"),
+            (
+                "alarm_gmp40_1_protocol_fault",
+                "Alarm_GMP40_1_Protocol_Fault",
+            ),
+            ("alarm_gmp40_1_unavailable", "Alarm_GMP40_1_Unavailable"),
         ] {
             assert_eq!(
                 components[component_id]["state_topic"],

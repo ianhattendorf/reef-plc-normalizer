@@ -89,6 +89,12 @@
             "receive_tag": "MQTT_Subscribe_Rcvd_Cab_Light",
             "topic": "plc/aquarium/command/cabinet_light",
             "topic_tag": "MQTT_Subscribe_Topic_Cab_Light"
+          },
+          {
+            "payload_tag": "MQTT_Subscribe_Data_GMP40_1_Com",
+            "receive_tag": "MQTT_Subscribe_Rcvd_GMP40_1_Com",
+            "topic": "plc/aquarium/command/gmp40_1",
+            "topic_tag": "MQTT_Subscribe_Topic_GMP40_1_Com"
           }
         ],
         "name": "Subscriber 1 Setup",
@@ -307,6 +313,36 @@
           "length": 1,
           "plc_data_type": 14,
           "source": "Alarm_Cab_Light_Door_On_Time",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_GMP40_1_Any",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_GMP40_1_Command_Failed",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_GMP40_1_Device_Fault",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_GMP40_1_Protocol_Fault",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "Alarm_GMP40_1_Unavailable",
           "wire_type": "bool"
         }
       ],
@@ -706,8 +742,8 @@
   ],
   "schema_version": 1,
   "source": {
-    "extractor_version": "1.1.0",
+    "extractor_version": "1.2.0",
     "file": "aquarium_controller.adpro",
-    "sha256": "d7847d47e5ea018ce00b89cd7f8ad0755e3c9a883842685ce21072b99d1198ab"
+    "sha256": "85843c7c90ca934f25dff1fe8f8b40de47937d7bf2de8c184c7d581534b1337c"
   }
 }
