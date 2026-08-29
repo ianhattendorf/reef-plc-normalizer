@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.23
+
 - Decode Productivity PKS unsigned-byte fields as hexadecimal so GMP40 values
   such as flow `46` and frequency `3C` normalize to decimal 70 and 60.
 
