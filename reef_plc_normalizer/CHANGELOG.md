@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.24
+
 - Publish the supported `value_template` discovery key for the confirmed-state
   GMP40 MQTT switch so Home Assistant renders power as on or off.
 
