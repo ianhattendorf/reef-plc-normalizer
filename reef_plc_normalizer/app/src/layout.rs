@@ -26,6 +26,7 @@ pub(super) enum TopicKind {
 pub(super) enum ValueType {
     Bool,
     Float,
+    HexInt,
     Int,
     Timestamp,
 }
@@ -203,7 +204,10 @@ pub(super) fn validate_layout(layout: &Layout) -> Result<()> {
 
             match (field.value_type, field.discovery.domain) {
                 (ValueType::Bool, Domain::BinarySensor | Domain::Light | Domain::Switch) => {}
-                (ValueType::Int, Domain::Sensor | Domain::Select | Domain::Number) => {}
+                (
+                    ValueType::HexInt | ValueType::Int,
+                    Domain::Sensor | Domain::Select | Domain::Number,
+                ) => {}
                 (ValueType::Float | ValueType::Timestamp, Domain::Sensor) => {}
                 _ => anyhow::bail!(
                     "packed MQTT layout field {} has incompatible value_type/domain",

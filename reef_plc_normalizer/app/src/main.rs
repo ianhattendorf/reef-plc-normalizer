@@ -232,12 +232,14 @@ mod tests {
             .iter()
             .find(|spec| spec.kind == TopicKind::Gmp40)
             .unwrap();
-        let state = parse_payload(spec, "1,1,1,3,72,40,55,10,0,1,1,20,0,0,1,0,2,0,7,42,").unwrap();
+        let state = parse_payload(spec, "1,1,1,4,46,3C,5,6,0,1,1,40,0,0,0,0,0,0,0,0,").unwrap();
 
         assert_eq!(state["GMP40_1_Data.Status.Power"], json!(true));
-        assert_eq!(state["GMP40_1_Data.Status.Mode"], json!(3));
-        assert_eq!(state["GMP40_1_Data.Status.Flow"], json!(72));
-        assert_eq!(state["GMP40_1_Authority.MQTTReceivedLast"], json!(42));
+        assert_eq!(state["GMP40_1_Data.Status.Mode"], json!(4));
+        assert_eq!(state["GMP40_1_Data.Status.Flow"], json!(70));
+        assert_eq!(state["GMP40_1_Data.Status.Frequency"], json!(60));
+        assert_eq!(state["GMP40_1_Data.Status.FeedTime"], json!(6));
+        assert_eq!(state["GMP40_1_Authority.MQTTReceivedLast"], json!(0));
     }
 
     #[test]
@@ -381,6 +383,25 @@ mod tests {
                 actual: 3,
                 ..
             }
+        ));
+    }
+
+    #[test]
+    fn rejects_invalid_gmp40_hex_values() {
+        let layout = test_layout();
+        let spec = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::Gmp40)
+            .unwrap();
+        let err = parse_payload(spec, "1,1,1,4,46,GG,5,6,0,1,1,40,0,0,0,0,0,0,0,0,").unwrap_err();
+
+        assert!(matches!(
+            err,
+            ParsePayloadError::InvalidInt {
+                ref field,
+                ..
+            } if field == "GMP40_1_Data.Status.Frequency"
         ));
     }
 

@@ -118,7 +118,7 @@ pub(super) fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(
                     component.insert("payload_on".to_string(), Value::String("ON".to_string()));
                     component.insert("payload_off".to_string(), Value::String("OFF".to_string()));
                 }
-                ValueType::Float | ValueType::Int | ValueType::Timestamp => {
+                ValueType::Float | ValueType::HexInt | ValueType::Int | ValueType::Timestamp => {
                     component.insert(
                         "value_template".to_string(),
                         Value::String(format!(

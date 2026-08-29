@@ -74,7 +74,9 @@ The one-second `plc/aquarium/gmp40_1` payload is normalized to
 `reef/plc/state/gmp40_1`. Home Assistant receives a confirmed-state power
 switch, mode select, flow/frequency/feed-time numbers, and read-only status and
 diagnostic entities. Custom frequency and remote-control enable remain
-read-only.
+read-only. Productivity PKS renders unsigned 8-bit values as hexadecimal text;
+the contract identifies those fields as `hex_int`, and the normalizer converts
+them to decimal JSON numbers.
 
 Commands arrive on `reef/plc/command/gmp40_1/{power,mode,flow,frequency,feed_time}`.
 The app validates the PLC bounds and encodes exactly one selected field in the

@@ -644,37 +644,37 @@
           "length": 1,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.Mode",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 3,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.Flow",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 3,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.Frequency",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 3,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.CustomFrequency",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 2,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.FeedTime",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 3,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.FaultMask",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 1,
@@ -722,7 +722,7 @@
           "length": 1,
           "plc_data_type": 173,
           "source": "GMP40_1_Authority.LastAcceptedSource",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 1,
