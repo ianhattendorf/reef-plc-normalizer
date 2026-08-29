@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.21
+
 - Normalize the one-second GMP40 controller telemetry and discover confirmed-state
   power, mode, flow, frequency, and feed-time controls plus read-only diagnostics.
 - Validate, encode, serialize, and coalesce non-retained GMP40 commands without
