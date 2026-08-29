@@ -79,6 +79,19 @@
         ],
         "name": "Publisher 2 Setup",
         "qos": 1
+      },
+      {
+        "interval_seconds": 1,
+        "mappings": [
+          {
+            "payload_tag": "Mqtt_Publish_Payload_GMP40_1",
+            "retain": false,
+            "topic": "plc/aquarium/gmp40_1",
+            "topic_tag": "Mqtt_Publish_Topic_GMP40_1"
+          }
+        ],
+        "name": "Publisher 3 Setup",
+        "qos": 0
       }
     ],
     "subscribers": [
@@ -610,6 +623,132 @@
     {
       "fields": [
         {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "GMP40_1_Data.Status.Valid",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "GMP40_1_Data.Status.Available",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "GMP40_1_Data.Status.Power",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 173,
+          "source": "GMP40_1_Data.Status.Mode",
+          "wire_type": "int"
+        },
+        {
+          "length": 3,
+          "plc_data_type": 173,
+          "source": "GMP40_1_Data.Status.Flow",
+          "wire_type": "int"
+        },
+        {
+          "length": 3,
+          "plc_data_type": 173,
+          "source": "GMP40_1_Data.Status.Frequency",
+          "wire_type": "int"
+        },
+        {
+          "length": 3,
+          "plc_data_type": 173,
+          "source": "GMP40_1_Data.Status.CustomFrequency",
+          "wire_type": "int"
+        },
+        {
+          "length": 2,
+          "plc_data_type": 173,
+          "source": "GMP40_1_Data.Status.FeedTime",
+          "wire_type": "int"
+        },
+        {
+          "length": 3,
+          "plc_data_type": 173,
+          "source": "GMP40_1_Data.Status.FaultMask",
+          "wire_type": "int"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "GMP40_1_Control_Ready",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "GMP40_1_Authority.RemoteControlEnable",
+          "wire_type": "bool"
+        },
+        {
+          "length": 2,
+          "plc_data_type": 43,
+          "source": "GMP40_1_Data.Diagnostics.ProtocolState",
+          "wire_type": "int"
+        },
+        {
+          "length": 3,
+          "plc_data_type": 43,
+          "source": "GMP40_1_Data.Diagnostics.LastError",
+          "wire_type": "int"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "GMP40_1_Data.Command.Pending",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "GMP40_1_Data.Command.AckMatched",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "GMP40_1_Data.Command.Failed",
+          "wire_type": "bool"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 173,
+          "source": "GMP40_1_Authority.LastAcceptedSource",
+          "wire_type": "int"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 14,
+          "source": "GMP40_1_Authority.Rejected",
+          "wire_type": "bool"
+        },
+        {
+          "length": 10,
+          "plc_data_type": 43,
+          "source": "GMP40_1_Authority.RejectCount",
+          "wire_type": "int"
+        },
+        {
+          "length": 10,
+          "plc_data_type": 43,
+          "source": "GMP40_1_Authority.MQTTReceivedLast",
+          "wire_type": "int"
+        }
+      ],
+      "payload_tag": "Mqtt_Publish_Payload_GMP40_1",
+      "topic": "plc/aquarium/gmp40_1"
+    },
+    {
+      "fields": [
+        {
           "length": 5,
           "plc_data_type": 63,
           "source": "Temp_Sump_1",
@@ -744,6 +883,6 @@
   "source": {
     "extractor_version": "1.2.0",
     "file": "aquarium_controller.adpro",
-    "sha256": "85843c7c90ca934f25dff1fe8f8b40de47937d7bf2de8c184c7d581534b1337c"
+    "sha256": "0e5a58714a928f75745f1bf2ffddbb34269b59f1568830978426421c25470f12"
   }
 }

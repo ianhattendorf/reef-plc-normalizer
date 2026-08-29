@@ -68,6 +68,23 @@ On startup and reconnect, the app removes the former retained
 `homeassistant/binary_sensor/reef_plc_do_relay_dc_4/config` discovery record
 before publishing the cabinet-light discovery record.
 
+## GMP40 Control
+
+The one-second `plc/aquarium/gmp40_1` payload is normalized to
+`reef/plc/state/gmp40_1`. Home Assistant receives a confirmed-state power
+switch, mode select, flow/frequency/feed-time numbers, and read-only status and
+diagnostic entities. Custom frequency and remote-control enable remain
+read-only.
+
+Commands arrive on `reef/plc/command/gmp40_1/{power,mode,flow,frequency,feed_time}`.
+The app validates the PLC bounds and encodes exactly one selected field in the
+seven-byte `[version, mask, power, mode, flow, frequency, feed_time]` payload.
+It publishes raw commands at QoS 1 without retention, permits only one command
+in flight, and coalesces later values for the same field. The next command is
+released only after PLC telemetry advances its MQTT receive counter. Queued and
+in-flight commands are discarded on connection loss, so a reconnect or restart
+cannot replay an old request.
+
 ## Topic Health
 
 The app publishes diagnostic MQTT binary sensor discovery for each normalized

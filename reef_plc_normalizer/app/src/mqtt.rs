@@ -7,6 +7,7 @@ use tokio::time;
 use tracing::{debug, error, info, warn};
 
 use crate::availability::{fresh_cached_states, CachedState, ReconnectBackoff};
+use crate::command::{CommandQueue, EncodedCommand};
 use crate::config::AppOptions;
 use crate::discovery::publish_discovery;
 use crate::layout::Layout;
@@ -63,6 +64,25 @@ async fn subscribe(client: &AsyncClient, layout: &Layout) -> Result<()> {
             .await
             .with_context(|| format!("failed to subscribe to {}", spec.source_topic))?;
     }
+    for topic in layout
+        .topics
+        .iter()
+        .flat_map(|spec| &spec.fields)
+        .filter_map(|field| {
+            field.discovery.command_mask.map(|_| {
+                field
+                    .discovery
+                    .command_topic
+                    .as_deref()
+                    .expect("validated command topic")
+            })
+        })
+    {
+        client
+            .subscribe(topic, QoS::AtLeastOnce)
+            .await
+            .with_context(|| format!("failed to subscribe to {topic}"))?;
+    }
 
     client
         .subscribe(HA_STATUS_TOPIC, QoS::AtLeastOnce)
@@ -102,10 +122,12 @@ async fn poll_loop(
     let mut last_states: HashMap<String, CachedState> = HashMap::new();
     let mut reconnect_backoff =
         ReconnectBackoff::new(MQTT_RECONNECT_INITIAL_DELAY, MQTT_RECONNECT_MAX_DELAY);
+    let mut commands = CommandQueue::default();
 
     loop {
         match event_loop.poll().await {
             Ok(Event::Incoming(Incoming::ConnAck(connack))) => {
+                commands.reset_connection();
                 reconnect_backoff.reset();
                 info!(
                     session_present = connack.session_present,
@@ -128,6 +150,22 @@ async fn poll_loop(
                     continue;
                 }
 
+                if layout
+                    .topics
+                    .iter()
+                    .flat_map(|spec| &spec.fields)
+                    .any(|field| {
+                        field.discovery.command_mask.is_some()
+                            && field.discovery.command_topic.as_deref() == Some(topic)
+                    })
+                {
+                    match commands.enqueue(&layout, topic, &packet.payload) {
+                        Ok(()) => publish_ready_command(&client, &mut commands).await?,
+                        Err(err) => warn!(%err, topic, "rejecting Home Assistant command"),
+                    }
+                    continue;
+                }
+
                 let Some(spec) = layout.topics.iter().find(|spec| spec.source_topic == topic)
                 else {
                     debug!(topic, "ignoring unmatched MQTT topic");
@@ -136,6 +174,7 @@ async fn poll_loop(
 
                 match normalize_payload(spec, &payload, SystemTime::now()) {
                     Ok(state) => {
+                        commands.observe_state(&state);
                         let state_payload = serde_json::to_string(&state)
                             .context("failed to serialize normalized state")?;
                         client
@@ -154,6 +193,7 @@ async fn poll_loop(
                                 updated_at: Instant::now(),
                             },
                         );
+                        publish_ready_command(&client, &mut commands).await?;
                     }
                     Err(err) => {
                         warn!(%err, payload = %payload, "rejecting PLC payload");
@@ -170,4 +210,21 @@ async fn poll_loop(
             }
         }
     }
+}
+
+async fn publish_ready_command(client: &AsyncClient, commands: &mut CommandQueue) -> Result<()> {
+    let Some(EncodedCommand { raw_topic, payload }) = commands.take_ready() else {
+        return Ok(());
+    };
+    client
+        .publish(
+            raw_topic.as_str(),
+            QoS::AtLeastOnce,
+            false,
+            payload.to_vec(),
+        )
+        .await
+        .with_context(|| format!("failed to publish encoded command to {raw_topic}"))?;
+    info!(topic = raw_topic, "published encoded GMP40 command");
+    Ok(())
 }

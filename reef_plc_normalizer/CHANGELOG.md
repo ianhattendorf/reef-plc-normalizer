@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Normalize the one-second GMP40 controller telemetry and discover confirmed-state
+  power, mode, flow, frequency, and feed-time controls plus read-only diagnostics.
+- Validate, encode, serialize, and coalesce non-retained GMP40 commands without
+  replaying queued requests after a reconnect or restart.
+- Refresh the vendored PLC MQTT contract for the GMP40 telemetry publisher.
+
 ## 0.1.20
 
 - Add normalized Home Assistant problem entities for the five GMP40 controller

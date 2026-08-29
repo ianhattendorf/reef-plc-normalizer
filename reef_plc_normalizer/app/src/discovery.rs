@@ -88,7 +88,7 @@ pub(super) fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(
                 Value::String(spec.state_topic.to_string()),
             );
             insert_combined_availability(&mut component);
-            if field.discovery.domain != Domain::Light {
+            if !matches!(field.discovery.domain, Domain::Light | Domain::Switch) {
                 component.insert(
                     "expire_after".to_string(),
                     Value::from(spec.kind.topic_health_expire_after_seconds()),
@@ -98,7 +98,7 @@ pub(super) fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(
             match field.value_type {
                 ValueType::Bool => {
                     component.insert(
-                        if field.discovery.domain == Domain::Light {
+                        if matches!(field.discovery.domain, Domain::Light | Domain::Switch) {
                             "state_value_template".to_string()
                         } else {
                             "value_template".to_string()
@@ -122,7 +122,10 @@ pub(super) fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(
                 }
             }
 
-            if field.discovery.domain == Domain::Light {
+            if matches!(
+                field.discovery.domain,
+                Domain::Light | Domain::Switch | Domain::Select | Domain::Number
+            ) {
                 component.insert(
                     "command_topic".to_string(),
                     Value::String(
@@ -133,9 +136,21 @@ pub(super) fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(
                             .expect("validated MQTT light command_topic"),
                     ),
                 );
-                component.insert("optimistic".to_string(), Value::Bool(true));
+                component.insert(
+                    "optimistic".to_string(),
+                    Value::Bool(field.discovery.domain == Domain::Light),
+                );
                 component.insert("qos".to_string(), Value::from(1));
                 component.insert("retain".to_string(), Value::Bool(false));
+            }
+            if let Some(min) = field.discovery.min {
+                component.insert("min".to_string(), Value::from(min));
+            }
+            if let Some(max) = field.discovery.max {
+                component.insert("max".to_string(), Value::from(max));
+            }
+            if let Some(options) = &field.discovery.options {
+                component.insert("options".to_string(), json!(options));
             }
             if let Some(default_entity_id) = &field.discovery.default_entity_id {
                 component.insert(
@@ -312,6 +327,7 @@ impl TopicKind {
             Self::Alarms => "alarms",
             Self::Ato => "ato",
             Self::TimeSync => "time_sync",
+            Self::Gmp40 => "gmp40_1",
             Self::Clock => "clock",
         }
     }
@@ -325,6 +341,7 @@ impl TopicKind {
             Self::Alarms => "Alarms",
             Self::Ato => "ATO",
             Self::TimeSync => "Time Sync",
+            Self::Gmp40 => "GMP40 1",
             Self::Clock => "Clock",
         }
     }

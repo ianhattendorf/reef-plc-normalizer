@@ -14,14 +14,15 @@ the PLC clock is behind the normalizer host and negative means it is ahead.
 
 - Input: `plc/aquarium/di`, `plc/aquarium/do`, `plc/aquarium/ai`,
   `plc/aquarium/inputs`, `plc/aquarium/alarms`, `plc/aquarium/ato`,
-  `plc/aquarium/time_sync`, `plc/aquarium/clock`
+  `plc/aquarium/time_sync`, `plc/aquarium/gmp40_1`, `plc/aquarium/clock`
 - Cabinet-light command: `plc/aquarium/command/cabinet_light`
-- State output: `reef/plc/state/{di,do,ai,inputs,alarms,ato,time_sync,clock}`
+- GMP40 commands: `reef/plc/command/gmp40_1/{power,mode,flow,frequency,feed_time}`
+- State output: `reef/plc/state/{di,do,ai,inputs,alarms,ato,time_sync,gmp40_1,clock}`
 - Availability: data entities require both `plc/aquarium/status` and
   `reef/plc/status`; the PLC MQTT connectivity entity requires only the
   normalizer status
 - Discovery:
-  `homeassistant/{sensor,binary_sensor,light}/reef_plc_<entity>/config`
+  `homeassistant/{sensor,binary_sensor,light,switch,select,number}/reef_plc_<entity>/config`
 
 The app also publishes a diagnostic PLC MQTT connectivity binary sensor from the
 PLC's retained status/LWT topic, plus topic-health binary sensors for each
@@ -36,6 +37,12 @@ non-retained `ON` and `OFF` commands directly to the PLC and optimistically
 reflects the requested state immediately. The next normalized digital-output
 payload reconciles the light with the confirmed PLC state. Other relay outputs
 remain observe-only binary sensors.
+
+GMP40 controls are non-optimistic: their state always comes from the PLC's
+confirmed status. The app validates each requested value, emits a seven-byte
+one-field masked command to `plc/aquarium/command/gmp40_1`, and waits for the
+PLC receive counter before sending the next queued request. Later requests for
+the same field are coalesced, and pending requests are discarded on reconnect.
 
 ## Configuration
 

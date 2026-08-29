@@ -823,6 +823,131 @@ topics:
           state_class: total_increasing
           entity_category: diagnostic
 
+  - kind: gmp40
+    source_topic: plc/aquarium/gmp40_1
+    state_topic: reef/plc/state/gmp40_1
+    raw_command_topic: plc/aquarium/command/gmp40_1
+    fields:
+      - source: GMP40_1_Data.Status.Valid
+        length: 1
+        value_type: bool
+        discovery: {domain: binary_sensor, name: GMP40 1 Status Valid, entity_category: diagnostic}
+      - source: GMP40_1_Data.Status.Available
+        length: 1
+        value_type: bool
+        discovery: {domain: binary_sensor, name: GMP40 1 Available, device_class: connectivity}
+      - source: GMP40_1_Data.Status.Power
+        length: 1
+        value_type: bool
+        discovery:
+          domain: switch
+          name: GMP40 1 Power
+          component_id: gmp40_1_power
+          command_topic: reef/plc/command/gmp40_1/power
+          command_mask: 1
+          min: 0
+          max: 1
+      - source: GMP40_1_Data.Status.Mode
+        length: 1
+        value_type: int
+        discovery:
+          domain: select
+          name: GMP40 1 Mode
+          component_id: gmp40_1_mode
+          command_topic: reef/plc/command/gmp40_1/mode
+          command_mask: 2
+          min: 0
+          max: 8
+          options: ["0", "1", "2", "3", "4", "5", "6", "7", "8"]
+      - source: GMP40_1_Data.Status.Flow
+        length: 3
+        value_type: int
+        discovery:
+          domain: number
+          name: GMP40 1 Flow
+          component_id: gmp40_1_flow
+          command_topic: reef/plc/command/gmp40_1/flow
+          command_mask: 4
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+      - source: GMP40_1_Data.Status.Frequency
+        length: 3
+        value_type: int
+        discovery:
+          domain: number
+          name: GMP40 1 Frequency
+          component_id: gmp40_1_frequency
+          command_topic: reef/plc/command/gmp40_1/frequency
+          command_mask: 8
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+      - source: GMP40_1_Data.Status.CustomFrequency
+        length: 3
+        value_type: int
+        discovery: {domain: sensor, name: GMP40 1 Custom Frequency, unit_of_measurement: "%", entity_category: diagnostic}
+      - source: GMP40_1_Data.Status.FeedTime
+        length: 2
+        value_type: int
+        discovery:
+          domain: number
+          name: GMP40 1 Feed Time
+          component_id: gmp40_1_feed_time
+          command_topic: reef/plc/command/gmp40_1/feed_time
+          command_mask: 16
+          min: 1
+          max: 60
+          unit_of_measurement: min
+      - source: GMP40_1_Data.Status.FaultMask
+        length: 3
+        value_type: int
+        discovery: {domain: sensor, name: GMP40 1 Fault Mask, entity_category: diagnostic}
+      - source: GMP40_1_Control_Ready
+        length: 1
+        value_type: bool
+        discovery: {domain: binary_sensor, name: GMP40 1 Control Ready, entity_category: diagnostic}
+      - source: GMP40_1_Authority.RemoteControlEnable
+        length: 1
+        value_type: bool
+        discovery: {domain: binary_sensor, name: GMP40 1 Remote Control Enabled, entity_category: diagnostic}
+      - source: GMP40_1_Data.Diagnostics.ProtocolState
+        length: 2
+        value_type: int
+        discovery: {domain: sensor, name: GMP40 1 Protocol State, entity_category: diagnostic}
+      - source: GMP40_1_Data.Diagnostics.LastError
+        length: 3
+        value_type: int
+        discovery: {domain: sensor, name: GMP40 1 Last Error, entity_category: diagnostic}
+      - source: GMP40_1_Data.Command.Pending
+        length: 1
+        value_type: bool
+        discovery: {domain: binary_sensor, name: GMP40 1 Command Pending, entity_category: diagnostic}
+      - source: GMP40_1_Data.Command.AckMatched
+        length: 1
+        value_type: bool
+        discovery: {domain: binary_sensor, name: GMP40 1 Command Acknowledged, entity_category: diagnostic}
+      - source: GMP40_1_Data.Command.Failed
+        length: 1
+        value_type: bool
+        discovery: {domain: binary_sensor, name: GMP40 1 Command Failed, device_class: problem, entity_category: diagnostic}
+      - source: GMP40_1_Authority.LastAcceptedSource
+        length: 1
+        value_type: int
+        discovery: {domain: sensor, name: GMP40 1 Last Accepted Source, entity_category: diagnostic}
+      - source: GMP40_1_Authority.Rejected
+        length: 1
+        value_type: bool
+        discovery: {domain: binary_sensor, name: GMP40 1 Authority Rejected, device_class: problem, entity_category: diagnostic}
+      - source: GMP40_1_Authority.RejectCount
+        length: 10
+        value_type: int
+        discovery: {domain: sensor, name: GMP40 1 Authority Reject Count, state_class: total_increasing, entity_category: diagnostic}
+      - source: GMP40_1_Authority.MQTTReceivedLast
+        length: 10
+        value_type: int
+        discovery: {domain: sensor, name: GMP40 1 MQTT Received Count, state_class: total_increasing, entity_category: diagnostic}
+
   - kind: clock
     source_topic: plc/aquarium/clock
     state_topic: reef/plc/state/clock

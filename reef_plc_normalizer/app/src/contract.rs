@@ -126,6 +126,8 @@ pub(super) fn validate_layout_contract(layout: &Layout) -> Result<()> {
         };
         let expected_interval = if spec.source_topic.ends_with("/clock") {
             300
+        } else if spec.source_topic.ends_with("/gmp40_1") {
+            1
         } else {
             10
         };
@@ -155,12 +157,14 @@ pub(super) fn validate_layout_contract(layout: &Layout) -> Result<()> {
             subscribed.insert(mapping.topic.as_str());
         }
     }
-    for command_topic in layout
-        .topics
-        .iter()
-        .flat_map(|spec| &spec.fields)
-        .filter_map(|field| field.discovery.command_topic.as_deref())
-    {
+    for command_topic in layout.topics.iter().flat_map(|spec| {
+        spec.raw_command_topic.iter().map(String::as_str).chain(
+            spec.fields
+                .iter()
+                .filter(|field| field.discovery.command_mask.is_none())
+                .filter_map(|field| field.discovery.command_topic.as_deref()),
+        )
+    }) {
         anyhow::ensure!(
             subscribed.contains(command_topic),
             "normalizer command topic missing from PLC contract: {command_topic}"

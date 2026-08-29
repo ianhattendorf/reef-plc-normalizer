@@ -17,6 +17,7 @@ pub(super) enum TopicKind {
     Alarms,
     Ato,
     TimeSync,
+    Gmp40,
     Clock,
 }
 
@@ -34,6 +35,9 @@ pub(super) enum ValueType {
 pub(super) enum Domain {
     BinarySensor,
     Light,
+    Switch,
+    Select,
+    Number,
     Sensor,
 }
 
@@ -42,6 +46,9 @@ impl Domain {
         match self {
             Self::BinarySensor => "binary_sensor",
             Self::Light => "light",
+            Self::Switch => "switch",
+            Self::Select => "select",
+            Self::Number => "number",
             Self::Sensor => "sensor",
         }
     }
@@ -78,6 +85,10 @@ pub(super) struct FieldDiscovery {
     pub(super) component_id: Option<String>,
     pub(super) default_entity_id: Option<String>,
     pub(super) command_topic: Option<String>,
+    pub(super) command_mask: Option<u8>,
+    pub(super) min: Option<i64>,
+    pub(super) max: Option<i64>,
+    pub(super) options: Option<Vec<String>>,
     pub(super) unit_of_measurement: Option<String>,
     pub(super) device_class: Option<String>,
     pub(super) state_class: Option<String>,
@@ -96,6 +107,7 @@ pub(super) struct TopicSpec {
     pub(super) kind: TopicKind,
     pub(super) source_topic: String,
     pub(super) state_topic: String,
+    pub(super) raw_command_topic: Option<String>,
     pub(super) fields: Vec<Field>,
 }
 
@@ -190,8 +202,9 @@ pub(super) fn validate_layout(layout: &Layout) -> Result<()> {
             );
 
             match (field.value_type, field.discovery.domain) {
-                (ValueType::Bool, Domain::BinarySensor | Domain::Light) => {}
-                (ValueType::Float | ValueType::Int | ValueType::Timestamp, Domain::Sensor) => {}
+                (ValueType::Bool, Domain::BinarySensor | Domain::Light | Domain::Switch) => {}
+                (ValueType::Int, Domain::Sensor | Domain::Select | Domain::Number) => {}
+                (ValueType::Float | ValueType::Timestamp, Domain::Sensor) => {}
                 _ => anyhow::bail!(
                     "packed MQTT layout field {} has incompatible value_type/domain",
                     field.source
@@ -203,14 +216,14 @@ pub(super) fn validate_layout(layout: &Layout) -> Result<()> {
                 field.source
             );
             match field.discovery.domain {
-                Domain::Light => {
+                Domain::Light | Domain::Switch | Domain::Select | Domain::Number => {
                     anyhow::ensure!(
                         field
                             .discovery
                             .command_topic
                             .as_deref()
                             .is_some_and(|topic| !topic.trim().is_empty()),
-                        "packed MQTT light {} requires command_topic",
+                        "packed MQTT controllable field {} requires command_topic",
                         field.source
                     );
                 }
@@ -221,6 +234,21 @@ pub(super) fn validate_layout(layout: &Layout) -> Result<()> {
                         field.source
                     );
                 }
+            }
+            if field.discovery.command_mask.is_some() {
+                anyhow::ensure!(
+                    spec.raw_command_topic.is_some(),
+                    "encoded command field {} requires raw_command_topic",
+                    field.source
+                );
+                anyhow::ensure!(
+                    matches!(
+                        field.discovery.domain,
+                        Domain::Switch | Domain::Select | Domain::Number
+                    ),
+                    "encoded command field {} has invalid domain",
+                    field.source
+                );
             }
         }
     }

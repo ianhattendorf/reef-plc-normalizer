@@ -4,6 +4,7 @@ use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 mod availability;
+mod command;
 mod config;
 mod contract;
 mod discovery;
@@ -71,7 +72,7 @@ mod tests {
     fn embedded_layout_loads_and_validates() {
         let layout = test_layout();
 
-        assert_eq!(layout.topics.len(), 8);
+        assert_eq!(layout.topics.len(), 9);
         assert!(layout
             .topics
             .iter()
@@ -220,6 +221,22 @@ mod tests {
         assert_eq!(state["ATO_Timer.Done"], json!(true));
         assert_eq!(state["ATO_Current_mL"], json!(42));
         assert_eq!(state["ATO_Acc_mL"], json!(1234));
+    }
+
+    #[test]
+    fn parses_gmp40_telemetry() {
+        let layout = test_layout();
+        let spec = layout
+            .topics
+            .iter()
+            .find(|spec| spec.kind == TopicKind::Gmp40)
+            .unwrap();
+        let state = parse_payload(spec, "1,1,1,3,72,40,55,10,0,1,1,20,0,0,1,0,2,0,7,42,").unwrap();
+
+        assert_eq!(state["GMP40_1_Data.Status.Power"], json!(true));
+        assert_eq!(state["GMP40_1_Data.Status.Mode"], json!(3));
+        assert_eq!(state["GMP40_1_Data.Status.Flow"], json!(72));
+        assert_eq!(state["GMP40_1_Authority.MQTTReceivedLast"], json!(42));
     }
 
     #[test]
@@ -510,6 +527,35 @@ mod tests {
     }
 
     #[test]
+    fn discovery_includes_confirmed_gmp40_controls() {
+        let layout = test_layout();
+        let options = test_options(false);
+        let messages = discovery_messages(&options, &layout);
+        let components = discovery_components(&options, &layout);
+
+        assert!(messages
+            .iter()
+            .any(|(topic, _)| topic == "homeassistant/switch/reef_plc_gmp40_1_power/config"));
+        assert!(messages
+            .iter()
+            .any(|(topic, _)| topic == "homeassistant/select/reef_plc_gmp40_1_mode/config"));
+        assert!(messages
+            .iter()
+            .any(|(topic, _)| topic == "homeassistant/number/reef_plc_gmp40_1_flow/config"));
+        assert_eq!(components["gmp40_1_power"]["optimistic"], json!(false));
+        assert_eq!(
+            components["gmp40_1_power"]["command_topic"],
+            json!("reef/plc/command/gmp40_1/power")
+        );
+        assert_eq!(
+            components["gmp40_1_mode"]["options"],
+            json!(["0", "1", "2", "3", "4", "5", "6", "7", "8"])
+        );
+        assert_eq!(components["gmp40_1_flow"]["min"], json!(0));
+        assert_eq!(components["gmp40_1_flow"]["max"], json!(100));
+    }
+
+    #[test]
     fn discovery_includes_plc_clock_timestamp() {
         let layout = test_layout();
         let options = test_options(false);
@@ -779,7 +825,7 @@ mod tests {
 
         assert!(err
             .to_string()
-            .contains("packed MQTT light DO_Relay_DC_4 requires command_topic"));
+            .contains("packed MQTT controllable field DO_Relay_DC_4 requires command_topic"));
     }
 
     #[test]
