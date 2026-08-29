@@ -565,6 +565,13 @@ mod tests {
             .iter()
             .any(|(topic, _)| topic == "homeassistant/number/reef_plc_gmp40_1_flow/config"));
         assert_eq!(components["gmp40_1_power"]["optimistic"], json!(false));
+        assert_eq!(
+            components["gmp40_1_power"]["value_template"],
+            json!("{{ 'ON' if value_json[\"GMP40_1_Data.Status.Power\"] else 'OFF' }}")
+        );
+        assert!(components["gmp40_1_power"]
+            .get("state_value_template")
+            .is_none());
         assert!(components["gmp40_1_power"].get("expire_after").is_none());
         assert!(components["gmp40_1_mode"].get("expire_after").is_none());
         assert!(components["gmp40_1_flow"].get("expire_after").is_none());

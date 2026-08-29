@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Publish the supported `value_template` discovery key for the confirmed-state
+  GMP40 MQTT switch so Home Assistant renders power as on or off.
+
 ## 0.1.23
 
 - Decode Productivity PKS unsigned-byte fields as hexadecimal so GMP40 values

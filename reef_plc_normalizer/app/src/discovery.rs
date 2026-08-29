@@ -105,7 +105,7 @@ pub(super) fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(
             match field.value_type {
                 ValueType::Bool => {
                     component.insert(
-                        if matches!(field.discovery.domain, Domain::Light | Domain::Switch) {
+                        if field.discovery.domain == Domain::Light {
                             "state_value_template".to_string()
                         } else {
                             "value_template".to_string()
