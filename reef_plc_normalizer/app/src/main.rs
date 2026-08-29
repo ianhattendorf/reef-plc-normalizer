@@ -35,6 +35,7 @@ const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 const DEVICE_ID: &str = "reef_plc";
 const DEVICE_NAME: &str = "Reef PLC";
 const AVAILABILITY_TOPIC: &str = "reef/plc/status";
+const GMP40_AVAILABILITY_TOPIC: &str = "reef/plc/status/gmp40_1";
 const PLC_AVAILABILITY_TOPIC: &str = "plc/aquarium/status";
 const DEFAULT_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS: u64 = 60;
 const CLOCK_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS: u64 = 390;
@@ -543,6 +544,29 @@ mod tests {
             .iter()
             .any(|(topic, _)| topic == "homeassistant/number/reef_plc_gmp40_1_flow/config"));
         assert_eq!(components["gmp40_1_power"]["optimistic"], json!(false));
+        assert!(components["gmp40_1_power"].get("expire_after").is_none());
+        assert!(components["gmp40_1_mode"].get("expire_after").is_none());
+        assert!(components["gmp40_1_flow"].get("expire_after").is_none());
+        assert_eq!(
+            components["gmp40_1_power"]["availability"],
+            json!([
+                {
+                    "topic": "plc/aquarium/status",
+                    "payload_available": "online",
+                    "payload_not_available": "offline"
+                },
+                {
+                    "topic": "reef/plc/status",
+                    "payload_available": "online",
+                    "payload_not_available": "offline"
+                },
+                {
+                    "topic": "reef/plc/status/gmp40_1",
+                    "payload_available": "online",
+                    "payload_not_available": "offline"
+                }
+            ])
+        );
         assert_eq!(
             components["gmp40_1_power"]["command_topic"],
             json!("reef/plc/command/gmp40_1/power")

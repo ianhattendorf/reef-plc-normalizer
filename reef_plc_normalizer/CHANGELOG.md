@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep GMP40 entities unavailable until valid controller telemetry is fresh, and
+  reject or discard commands unless confirmed remote control is ready.
+- Clear GMP40 command state immediately when the PLC goes offline or GMP40
+  telemetry expires so pre-deployment or stale commands cannot be replayed.
+
 ## 0.1.21
 
 - Normalize the one-second GMP40 controller telemetry and discover confirmed-state

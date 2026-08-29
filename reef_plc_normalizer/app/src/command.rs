@@ -8,6 +8,8 @@ use crate::layout::{Domain, Layout};
 const VERSION: u8 = 1;
 const RECEIVE_COUNTER: &str = "GMP40_1_Authority.MQTTReceivedLast";
 const COMMAND_PENDING: &str = "GMP40_1_Data.Command.Pending";
+const CONTROL_READY: &str = "GMP40_1_Control_Ready";
+const REMOTE_CONTROL_ENABLED: &str = "GMP40_1_Authority.RemoteControlEnable";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct EncodedCommand {
@@ -19,12 +21,18 @@ pub(super) struct EncodedCommand {
 pub(super) struct CommandQueue {
     counter: Option<i64>,
     in_flight_after: Option<i64>,
+    control_ready: bool,
     pending: HashMap<String, EncodedCommand>,
     order: VecDeque<String>,
 }
 
 impl CommandQueue {
     pub(super) fn enqueue(&mut self, layout: &Layout, topic: &str, value: &[u8]) -> Result<()> {
+        anyhow::ensure!(
+            self.counter.is_some(),
+            "GMP40 telemetry has not established a receive counter"
+        );
+        anyhow::ensure!(self.control_ready, "GMP40 remote control is not ready");
         let (spec, field) = layout
             .topics
             .iter()
@@ -101,6 +109,19 @@ impl CommandQueue {
             .get(COMMAND_PENDING)
             .and_then(Value::as_bool)
             .unwrap_or(true);
+        self.control_ready = state
+            .get(CONTROL_READY)
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+            && state
+                .get(REMOTE_CONTROL_ENABLED)
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+        if !self.control_ready {
+            self.pending.clear();
+            self.order.clear();
+            self.in_flight_after = None;
+        }
         if self
             .in_flight_after
             .is_some_and(|previous| counter > previous && !command_pending)
@@ -128,6 +149,7 @@ impl CommandQueue {
         self.order.clear();
         self.in_flight_after = None;
         self.counter = None;
+        self.control_ready = false;
     }
 }
 
@@ -142,6 +164,8 @@ mod tests {
         [
             (RECEIVE_COUNTER.to_string(), Value::from(counter)),
             (COMMAND_PENDING.to_string(), Value::from(pending)),
+            (CONTROL_READY.to_string(), Value::from(true)),
+            (REMOTE_CONTROL_ENABLED.to_string(), Value::from(true)),
         ]
         .into_iter()
         .collect()
@@ -196,6 +220,7 @@ mod tests {
     fn rejects_out_of_range_and_malformed_commands() {
         let layout = load_layout().unwrap();
         let mut queue = CommandQueue::default();
+        queue.observe_state(&state(1, false));
         assert!(queue
             .enqueue(&layout, "reef/plc/command/gmp40_1/mode", b"9")
             .is_err());
@@ -205,5 +230,28 @@ mod tests {
         assert!(queue
             .enqueue(&layout, "reef/plc/command/gmp40_1/power", b"maybe")
             .is_err());
+    }
+
+    #[test]
+    fn rejects_commands_until_fresh_control_state_is_ready() {
+        let layout = load_layout().unwrap();
+        let mut queue = CommandQueue::default();
+        assert!(queue
+            .enqueue(&layout, "reef/plc/command/gmp40_1/power", b"ON")
+            .is_err());
+
+        let mut not_ready = state(1, false);
+        not_ready.insert(CONTROL_READY.to_string(), Value::from(false));
+        queue.observe_state(&not_ready);
+        assert!(queue
+            .enqueue(&layout, "reef/plc/command/gmp40_1/power", b"ON")
+            .is_err());
+
+        queue.observe_state(&state(1, false));
+        assert!(queue
+            .enqueue(&layout, "reef/plc/command/gmp40_1/power", b"ON")
+            .is_ok());
+        queue.reset_connection();
+        assert!(queue.take_ready().is_none());
     }
 }

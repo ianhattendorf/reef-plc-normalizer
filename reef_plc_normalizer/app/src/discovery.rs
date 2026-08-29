@@ -8,7 +8,8 @@ use crate::layout::{field_component_id, Domain, Layout, TopicKind, TopicSpec, Va
 use crate::normalize::CLOCK_OFFSET_FIELD;
 use crate::{
     APP_NAME, APP_VERSION, AVAILABILITY_TOPIC, CLOCK_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS,
-    DEFAULT_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS, DEVICE_ID, DEVICE_NAME, PLC_AVAILABILITY_TOPIC,
+    DEFAULT_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS, DEVICE_ID, DEVICE_NAME, GMP40_AVAILABILITY_TOPIC,
+    PLC_AVAILABILITY_TOPIC,
 };
 
 pub(super) async fn publish_discovery(
@@ -88,7 +89,13 @@ pub(super) fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(
                 Value::String(spec.state_topic.to_string()),
             );
             insert_combined_availability(&mut component);
-            if !matches!(field.discovery.domain, Domain::Light | Domain::Switch) {
+            if spec.kind == TopicKind::Gmp40 {
+                insert_gmp40_availability(&mut component);
+            }
+            if matches!(
+                field.discovery.domain,
+                Domain::Sensor | Domain::BinarySensor
+            ) {
                 component.insert(
                     "expire_after".to_string(),
                     Value::from(spec.kind.topic_health_expire_after_seconds()),
@@ -223,6 +230,18 @@ fn insert_combined_availability(component: &mut Map<String, Value>) {
         ]),
     );
     component.insert("availability_mode".to_string(), json!("all"));
+}
+
+fn insert_gmp40_availability(component: &mut Map<String, Value>) {
+    component
+        .get_mut("availability")
+        .and_then(Value::as_array_mut)
+        .expect("combined availability array")
+        .push(json!({
+            "topic": GMP40_AVAILABILITY_TOPIC,
+            "payload_available": "online",
+            "payload_not_available": "offline"
+        }));
 }
 
 fn plc_mqtt_connected_discovery_message(options: &AppOptions) -> (String, Value) {
