@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.25
+
 - Show GMP40 operating modes as named Home Assistant select options while
   preserving the PLC's numeric command and status values.
 - Discover the GMP40 independent, primary, synchronous-secondary, and
