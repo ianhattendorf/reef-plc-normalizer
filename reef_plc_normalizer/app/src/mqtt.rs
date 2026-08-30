@@ -10,9 +10,12 @@ use crate::availability::{fresh_cached_states, CachedState, ReconnectBackoff};
 use crate::command::{CommandQueue, EncodedCommand};
 use crate::config::AppOptions;
 use crate::discovery::publish_discovery;
-use crate::layout::Layout;
+use crate::layout::{Layout, TopicKind};
 use crate::normalize::normalize_payload;
-use crate::AVAILABILITY_TOPIC;
+use crate::{
+    AVAILABILITY_TOPIC, DEFAULT_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS, GMP40_AVAILABILITY_TOPIC,
+    PLC_AVAILABILITY_TOPIC,
+};
 
 const CLIENT_ID: &str = "reef-plc-normalizer";
 const HA_STATUS_TOPIC: &str = "homeassistant/status";
@@ -88,6 +91,10 @@ async fn subscribe(client: &AsyncClient, layout: &Layout) -> Result<()> {
         .subscribe(HA_STATUS_TOPIC, QoS::AtLeastOnce)
         .await
         .with_context(|| format!("failed to subscribe to {HA_STATUS_TOPIC}"))?;
+    client
+        .subscribe(PLC_AVAILABILITY_TOPIC, QoS::AtLeastOnce)
+        .await
+        .with_context(|| format!("failed to subscribe to {PLC_AVAILABILITY_TOPIC}"))?;
 
     Ok(())
 }
@@ -123,22 +130,58 @@ async fn poll_loop(
     let mut reconnect_backoff =
         ReconnectBackoff::new(MQTT_RECONNECT_INITIAL_DELAY, MQTT_RECONNECT_MAX_DELAY);
     let mut commands = CommandQueue::default();
+    let mut gmp40_last_received: Option<Instant> = None;
+    let mut gmp40_available: Option<bool> = None;
 
     loop {
-        match event_loop.poll().await {
+        if gmp40_last_received.is_some_and(|received| {
+            received.elapsed() > Duration::from_secs(DEFAULT_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS)
+        }) {
+            commands.reset_connection();
+            gmp40_last_received = None;
+            set_gmp40_availability(&client, &mut gmp40_available, false).await?;
+        }
+        let event = match time::timeout(Duration::from_secs(1), event_loop.poll()).await {
+            Ok(event) => event,
+            Err(_) => {
+                if gmp40_last_received.is_some_and(|received| {
+                    received.elapsed()
+                        > Duration::from_secs(DEFAULT_TOPIC_HEALTH_EXPIRE_AFTER_SECONDS)
+                }) {
+                    commands.reset_connection();
+                    gmp40_last_received = None;
+                    set_gmp40_availability(&client, &mut gmp40_available, false).await?;
+                }
+                continue;
+            }
+        };
+
+        match event {
             Ok(Event::Incoming(Incoming::ConnAck(connack))) => {
                 commands.reset_connection();
+                gmp40_last_received = None;
+                gmp40_available = None;
                 reconnect_backoff.reset();
                 info!(
                     session_present = connack.session_present,
                     "MQTT connection established; refreshing subscriptions and discovery"
                 );
+                set_gmp40_availability(&client, &mut gmp40_available, false).await?;
                 refresh_connection(&client, &options, &layout, &last_states, Instant::now())
                     .await?;
             }
             Ok(Event::Incoming(Incoming::Publish(packet))) => {
                 let topic = packet.topic.as_str();
                 let payload = String::from_utf8_lossy(&packet.payload);
+
+                if topic == PLC_AVAILABILITY_TOPIC {
+                    if payload.trim() != "online" {
+                        commands.reset_connection();
+                        gmp40_last_received = None;
+                        set_gmp40_availability(&client, &mut gmp40_available, false).await?;
+                    }
+                    continue;
+                }
 
                 if topic == HA_STATUS_TOPIC {
                     if payload.trim() == "online" {
@@ -193,6 +236,10 @@ async fn poll_loop(
                                 updated_at: Instant::now(),
                             },
                         );
+                        if spec.kind == TopicKind::Gmp40 {
+                            gmp40_last_received = Some(Instant::now());
+                            set_gmp40_availability(&client, &mut gmp40_available, true).await?;
+                        }
                         publish_ready_command(&client, &mut commands).await?;
                     }
                     Err(err) => {
@@ -210,6 +257,27 @@ async fn poll_loop(
             }
         }
     }
+}
+
+async fn set_gmp40_availability(
+    client: &AsyncClient,
+    current: &mut Option<bool>,
+    available: bool,
+) -> Result<()> {
+    if *current == Some(available) {
+        return Ok(());
+    }
+    client
+        .publish(
+            GMP40_AVAILABILITY_TOPIC,
+            QoS::AtLeastOnce,
+            true,
+            if available { "online" } else { "offline" },
+        )
+        .await
+        .context("failed to publish GMP40 availability")?;
+    *current = Some(available);
+    Ok(())
 }
 
 async fn publish_ready_command(client: &AsyncClient, commands: &mut CommandQueue) -> Result<()> {

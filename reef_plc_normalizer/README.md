@@ -19,8 +19,9 @@ the PLC clock is behind the normalizer host and negative means it is ahead.
 - GMP40 commands: `reef/plc/command/gmp40_1/{power,mode,flow,frequency,feed_time}`
 - State output: `reef/plc/state/{di,do,ai,inputs,alarms,ato,time_sync,gmp40_1,clock}`
 - Availability: data entities require both `plc/aquarium/status` and
-  `reef/plc/status`; the PLC MQTT connectivity entity requires only the
-  normalizer status
+  `reef/plc/status`; GMP40 entities additionally require fresh valid GMP40
+  telemetry via `reef/plc/status/gmp40_1`; the PLC MQTT connectivity entity
+  requires only the normalizer status
 - Discovery:
   `homeassistant/{sensor,binary_sensor,light,switch,select,number}/reef_plc_<entity>/config`
 
@@ -42,7 +43,9 @@ GMP40 controls are non-optimistic: their state always comes from the PLC's
 confirmed status. The app validates each requested value, emits a seven-byte
 one-field masked command to `plc/aquarium/command/gmp40_1`, and waits for the
 PLC receive counter before sending the next queued request. Later requests for
-the same field are coalesced, and pending requests are discarded on reconnect.
+the same field are coalesced. Commands are rejected until fresh telemetry says
+remote control is enabled and ready, and pending requests are discarded when
+the PLC goes offline, GMP40 telemetry expires, or the normalizer reconnects.
 
 ## Configuration
 

@@ -74,16 +74,20 @@ The one-second `plc/aquarium/gmp40_1` payload is normalized to
 `reef/plc/state/gmp40_1`. Home Assistant receives a confirmed-state power
 switch, mode select, flow/frequency/feed-time numbers, and read-only status and
 diagnostic entities. Custom frequency and remote-control enable remain
-read-only.
+read-only. Productivity PKS renders unsigned 8-bit values as hexadecimal text;
+the contract identifies those fields as `hex_int`, and the normalizer converts
+them to decimal JSON numbers.
 
 Commands arrive on `reef/plc/command/gmp40_1/{power,mode,flow,frequency,feed_time}`.
 The app validates the PLC bounds and encodes exactly one selected field in the
 seven-byte `[version, mask, power, mode, flow, frequency, feed_time]` payload.
 It publishes raw commands at QoS 1 without retention, permits only one command
-in flight, and coalesces later values for the same field. The next command is
-released only after PLC telemetry advances its MQTT receive counter. Queued and
-in-flight commands are discarded on connection loss, so a reconnect or restart
-cannot replay an old request.
+in flight, and coalesces later values for the same field. Commands are rejected
+until valid telemetry has established the receive counter and confirms both
+control readiness and remote-control enablement. The next command is released
+only after PLC telemetry advances its MQTT receive counter. Queued and in-flight
+commands are discarded when PLC availability goes offline, GMP40 telemetry
+expires, or the normalizer reconnects, so a stale request cannot be replayed.
 
 ## Topic Health
 
@@ -108,6 +112,13 @@ for the normalizer. `expire_after` independently tracks per-topic freshness.
 This makes STOP mode uniform: the PLC LWT makes data unavailable immediately,
 while a failure of only one publisher appears as that topic's expiry after its
 grace period.
+
+MQTT control domains do not support `expire_after`. GMP40 entities therefore
+also require the retained `reef/plc/status/gmp40_1` availability derived from
+valid GMP40 telemetry. It starts offline, becomes online after a valid payload,
+and returns offline after 60 seconds without one. This is not an additional PLC
+heartbeat: it is the normalizer's retained representation of the existing
+unconditional GMP40 publisher's freshness.
 
 ## MQTT Recovery
 

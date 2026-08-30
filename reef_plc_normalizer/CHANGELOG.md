@@ -6,8 +6,23 @@
   preserving the PLC's numeric command and status values.
 - Discover the GMP40 independent, primary, synchronous-secondary, and
   asynchronous-secondary linkage states.
-- Decode GMP40 UInt8 telemetry using the hexadecimal PKS wire format declared
-  by the authoritative PLC contract.
+
+## 0.1.24
+
+- Publish the supported `value_template` discovery key for the confirmed-state
+  GMP40 MQTT switch so Home Assistant renders power as on or off.
+
+## 0.1.23
+
+- Decode Productivity PKS unsigned-byte fields as hexadecimal so GMP40 values
+  such as flow `46` and frequency `3C` normalize to decimal 70 and 60.
+
+## 0.1.22
+
+- Keep GMP40 entities unavailable until valid controller telemetry is fresh, and
+  reject or discard commands unless confirmed remote control is ready.
+- Clear GMP40 command state immediately when the PLC goes offline or GMP40
+  telemetry expires so pre-deployment or stale commands cannot be replayed.
 
 ## 0.1.21
 
