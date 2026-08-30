@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Show GMP40 operating modes as named Home Assistant select options while
+  preserving the PLC's numeric command and status values.
+- Discover the GMP40 independent, primary, synchronous-secondary, and
+  asynchronous-secondary linkage states.
+- Decode GMP40 UInt8 telemetry using the hexadecimal PKS wire format declared
+  by the authoritative PLC contract.
+
 ## 0.1.21
 
 - Normalize the one-second GMP40 controller telemetry and discover confirmed-state

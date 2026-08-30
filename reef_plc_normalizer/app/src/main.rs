@@ -231,12 +231,17 @@ mod tests {
             .iter()
             .find(|spec| spec.kind == TopicKind::Gmp40)
             .unwrap();
-        let state = parse_payload(spec, "1,1,1,3,72,40,55,10,0,1,1,20,0,0,1,0,2,0,7,42,").unwrap();
+        let state = parse_payload(
+            spec,
+            "1,1,1,3,048,028,037,0A,000,1,1,20,0,0,1,0,2,0,7,42,3,",
+        )
+        .unwrap();
 
         assert_eq!(state["GMP40_1_Data.Status.Power"], json!(true));
         assert_eq!(state["GMP40_1_Data.Status.Mode"], json!(3));
         assert_eq!(state["GMP40_1_Data.Status.Flow"], json!(72));
         assert_eq!(state["GMP40_1_Authority.MQTTReceivedLast"], json!(42));
+        assert_eq!(state["GMP40_1_Data.Status.Linkage"], json!(3));
     }
 
     #[test]
@@ -549,7 +554,25 @@ mod tests {
         );
         assert_eq!(
             components["gmp40_1_mode"]["options"],
-            json!(["0", "1", "2", "3", "4", "5", "6", "7", "8"])
+            json!([
+                "pulse_wave",
+                "sine_wave",
+                "constant_flow",
+                "random_wave",
+                "tide",
+                "nutrient_transport",
+                "circulation",
+                "feeding",
+                "custom_wave"
+            ])
+        );
+        assert_eq!(
+            components["gmp40_1_mode"]["value_template"],
+            json!("{{ {0: 'pulse_wave', 1: 'sine_wave', 2: 'constant_flow', 3: 'random_wave', 4: 'tide', 5: 'nutrient_transport', 6: 'circulation', 7: 'feeding', 8: 'custom_wave'}.get(value_json[\"GMP40_1_Data.Status.Mode\"] | int) }}")
+        );
+        assert_eq!(
+            components["gmp40_1_linkage"]["value_template"],
+            json!("{{ {0: 'independent', 1: 'primary', 2: 'synchronous_secondary', 3: 'asynchronous_secondary'}.get(value_json[\"GMP40_1_Data.Status.Linkage\"] | int) }}")
         );
         assert_eq!(components["gmp40_1_flow"]["min"], json!(0));
         assert_eq!(components["gmp40_1_flow"]["max"], json!(100));

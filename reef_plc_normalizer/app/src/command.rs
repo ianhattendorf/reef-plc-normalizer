@@ -46,7 +46,17 @@ impl CommandQueue {
                 "OFF" => 0,
                 _ => return Err(anyhow!("expected ON or OFF")),
             },
-            Domain::Select | Domain::Number => text
+            Domain::Select => {
+                if let Some(value_map) = &field.discovery.value_map {
+                    *value_map
+                        .get(text)
+                        .ok_or_else(|| anyhow!("value is not a valid option"))?
+                } else {
+                    text.parse::<i64>()
+                        .map_err(|_| anyhow!("expected an integer"))?
+                }
+            }
+            Domain::Number => text
                 .parse::<i64>()
                 .map_err(|_| anyhow!("expected an integer"))?,
             _ => return Err(anyhow!("unsupported encoded command domain")),
@@ -165,6 +175,22 @@ mod tests {
         );
         assert!(queue.take_ready().is_none());
         queue.observe_state(&state(13, false));
+    }
+
+    #[test]
+    fn translates_named_mode_option_to_plc_byte() {
+        let layout = load_layout().unwrap();
+        let mut queue = CommandQueue::default();
+        queue.observe_state(&state(12, false));
+        queue
+            .enqueue(
+                &layout,
+                "reef/plc/command/gmp40_1/mode",
+                b"nutrient_transport",
+            )
+            .unwrap();
+
+        assert_eq!(queue.take_ready().unwrap().payload, [1, 2, 0, 5, 0, 0, 0]);
     }
 
     #[test]

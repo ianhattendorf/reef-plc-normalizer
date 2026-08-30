@@ -205,6 +205,7 @@ pub(super) fn validate_layout_contract(layout: &Layout) -> Result<()> {
             let normalizer_type = match field.value_type {
                 ValueType::Bool => "bool",
                 ValueType::Float => "float",
+                ValueType::HexInt => "hex_int",
                 ValueType::Int => "int",
                 ValueType::Timestamp => "timestamp",
             };

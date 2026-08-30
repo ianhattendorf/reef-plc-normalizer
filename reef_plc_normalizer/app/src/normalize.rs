@@ -141,6 +141,13 @@ fn parse_value(topic: &str, field: &Field, value: &str) -> Result<Value, ParsePa
                     value: value.to_string(),
                 })
         }
+        ValueType::HexInt => i64::from_str_radix(value, 16)
+            .map(Value::from)
+            .map_err(|_| ParsePayloadError::InvalidInt {
+                topic: topic.to_string(),
+                field: field.source.clone(),
+                value: value.to_string(),
+            }),
         ValueType::Timestamp => {
             if is_plc_timestamp(value) {
                 Ok(Value::String(value.to_string()))

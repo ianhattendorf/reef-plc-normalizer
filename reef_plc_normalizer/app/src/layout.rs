@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -26,6 +26,7 @@ pub(super) enum TopicKind {
 pub(super) enum ValueType {
     Bool,
     Float,
+    HexInt,
     Int,
     Timestamp,
 }
@@ -89,6 +90,7 @@ pub(super) struct FieldDiscovery {
     pub(super) min: Option<i64>,
     pub(super) max: Option<i64>,
     pub(super) options: Option<Vec<String>>,
+    pub(super) value_map: Option<BTreeMap<String, i64>>,
     pub(super) unit_of_measurement: Option<String>,
     pub(super) device_class: Option<String>,
     pub(super) state_class: Option<String>,
@@ -203,7 +205,10 @@ pub(super) fn validate_layout(layout: &Layout) -> Result<()> {
 
             match (field.value_type, field.discovery.domain) {
                 (ValueType::Bool, Domain::BinarySensor | Domain::Light | Domain::Switch) => {}
-                (ValueType::Int, Domain::Sensor | Domain::Select | Domain::Number) => {}
+                (
+                    ValueType::HexInt | ValueType::Int,
+                    Domain::Sensor | Domain::Select | Domain::Number,
+                ) => {}
                 (ValueType::Float | ValueType::Timestamp, Domain::Sensor) => {}
                 _ => anyhow::bail!(
                     "packed MQTT layout field {} has incompatible value_type/domain",
@@ -249,6 +254,51 @@ pub(super) fn validate_layout(layout: &Layout) -> Result<()> {
                     "encoded command field {} has invalid domain",
                     field.source
                 );
+            }
+            if let Some(value_map) = &field.discovery.value_map {
+                anyhow::ensure!(
+                    matches!(field.discovery.domain, Domain::Sensor | Domain::Select),
+                    "packed MQTT layout field {} uses value_map outside the sensor/select domains",
+                    field.source
+                );
+                if field.discovery.domain == Domain::Select {
+                    let options = field.discovery.options.as_ref().ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "packed MQTT layout field {} uses value_map without options",
+                            field.source
+                        )
+                    })?;
+                    anyhow::ensure!(
+                        options.len() == value_map.len()
+                            && options.iter().all(|option| value_map.contains_key(option)),
+                        "packed MQTT layout field {} options do not match value_map",
+                        field.source
+                    );
+                }
+                let mut values = value_map.values().collect::<Vec<_>>();
+                values.sort_unstable();
+                values.dedup();
+                anyhow::ensure!(
+                    values.len() == value_map.len(),
+                    "packed MQTT layout field {} value_map contains duplicate values",
+                    field.source
+                );
+                for value in value_map.values() {
+                    if let Some(min) = field.discovery.min {
+                        anyhow::ensure!(
+                            *value >= min,
+                            "packed MQTT layout field {} option value is below minimum",
+                            field.source
+                        );
+                    }
+                    if let Some(max) = field.discovery.max {
+                        anyhow::ensure!(
+                            *value <= max,
+                            "packed MQTT layout field {} option value is above maximum",
+                            field.source
+                        );
+                    }
+                }
             }
         }
     }

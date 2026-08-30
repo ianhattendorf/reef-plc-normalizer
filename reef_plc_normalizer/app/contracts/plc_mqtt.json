@@ -644,37 +644,37 @@
           "length": 1,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.Mode",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 3,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.Flow",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 3,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.Frequency",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 3,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.CustomFrequency",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 2,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.FeedTime",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 3,
           "plc_data_type": 173,
           "source": "GMP40_1_Data.Status.FaultMask",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 1,
@@ -722,7 +722,7 @@
           "length": 1,
           "plc_data_type": 173,
           "source": "GMP40_1_Authority.LastAcceptedSource",
-          "wire_type": "int"
+          "wire_type": "hex_int"
         },
         {
           "length": 1,
@@ -741,6 +741,12 @@
           "plc_data_type": 43,
           "source": "GMP40_1_Authority.MQTTReceivedLast",
           "wire_type": "int"
+        },
+        {
+          "length": 1,
+          "plc_data_type": 173,
+          "source": "GMP40_1_Data.Status.Linkage",
+          "wire_type": "hex_int"
         }
       ],
       "payload_tag": "Mqtt_Publish_Payload_GMP40_1",
@@ -883,6 +889,6 @@
   "source": {
     "extractor_version": "1.2.0",
     "file": "aquarium_controller.adpro",
-    "sha256": "0e5a58714a928f75745f1bf2ffddbb34269b59f1568830978426421c25470f12"
+    "sha256": "fb4194a984a7378c0dc50be1c69e686f6771747a14675ff81151eaf391bb29a7"
   }
 }

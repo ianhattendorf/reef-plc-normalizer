@@ -111,14 +111,23 @@ pub(super) fn discovery_messages(options: &AppOptions, layout: &Layout) -> Vec<(
                     component.insert("payload_on".to_string(), Value::String("ON".to_string()));
                     component.insert("payload_off".to_string(), Value::String("OFF".to_string()));
                 }
-                ValueType::Float | ValueType::Int | ValueType::Timestamp => {
-                    component.insert(
-                        "value_template".to_string(),
-                        Value::String(format!(
-                            "{{{{ value_json[{}] }}}}",
+                ValueType::Float | ValueType::HexInt | ValueType::Int | ValueType::Timestamp => {
+                    let value_template = if let Some(value_map) = &field.discovery.value_map {
+                        let mut value_options = value_map.iter().collect::<Vec<_>>();
+                        value_options.sort_by_key(|(_, value)| *value);
+                        let mapping = value_options
+                            .into_iter()
+                            .map(|(option, value)| format!("{value}: '{option}'"))
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        format!(
+                            "{{{{ {{{mapping}}}.get(value_json[{}] | int) }}}}",
                             jinja_key(&field.source)
-                        )),
-                    );
+                        )
+                    } else {
+                        format!("{{{{ value_json[{}] }}}}", jinja_key(&field.source))
+                    };
+                    component.insert("value_template".to_string(), Value::String(value_template));
                 }
             }
 
